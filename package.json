@@ -1,0 +1,38 @@
+{
+  "name": "dapperline",
+  "version": "0.1.0",
+  "description": "A posh-git style status line for Claude Code, with context window and rate-limit usage.",
+  "main": "dapperline.js",
+  "bin": {
+    "dapperline": "dapperline.js"
+  },
+  "files": [
+    "dapperline.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node test/render.js --plain"
+  },
+  "keywords": [
+    "claude-code",
+    "statusline",
+    "posh-git",
+    "git",
+    "prompt",
+    "terminal"
+  ],
+  "author": "dev-2nan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dev-2nan/dapperline.git"
+  },
+  "homepage": "https://github.com/dev-2nan/dapperline#readme",
+  "bugs": {
+    "url": "https://github.com/dev-2nan/dapperline/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

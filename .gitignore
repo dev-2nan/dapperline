@@ -1,0 +1,14 @@
+node_modules/
+npm-debug.log*
+*.tgz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# Local debug dumps (CONFIG.debugDump)
+statusline-input.json
