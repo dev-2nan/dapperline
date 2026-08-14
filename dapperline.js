@@ -18,6 +18,9 @@ const CONFIG = {
   alwaysShowZeros: true,   // posh-git style: always print +0 ~0 -0
   showStash:       true,   // $n stash count (read from reflog, costs no process)
 
+  // Model name
+  shortenModel:    true,   // drop a trailing parenthetical: "Opus 5 (1M context)" → "Opus 5"
+
   // Usage segment
   showTokens:      true,   // token counts next to the context percentage (217k/1M)
   showReset:       false,  // time until each rate-limit window resets
@@ -229,6 +232,12 @@ function renderRates(rl) {
   }).filter(Boolean);
 }
 
+/** "Opus 5 (1M context)" → "Opus 5" */
+const shortModel = n => {
+  const s = n || '?';
+  return CONFIG.shortenModel ? s.replace(/\s*\([^)]*\)\s*$/, '') : s;
+};
+
 /** Renders both lines. Exported so tests can feed it fixtures. */
 function render(d) {
   const cwd = d.workspace?.current_dir || d.cwd;
@@ -243,7 +252,7 @@ function render(d) {
   const durMs = d.cost?.total_duration_ms || 0;
 
   const line1 = [
-    paint(`[${d.model?.display_name ?? '?'}]`, C.cyan),
+    paint(`[${shortModel(d.model?.display_name)}]`, C.cyan),
     `📁 ${path.basename(cwd)}`,
     g ? renderGit(g) : '',
   ].filter(Boolean).join(' ');
