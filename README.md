@@ -4,7 +4,9 @@ A [posh-git](https://github.com/dahlbyk/posh-git) style status line for [Claude 
 
 ```
 [Opus 5] ⚡xhigh 💡 📁 dapperline [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
-██████░░░░ 22% 217k/1M | 5h 8% | 7d 58%
+ctx ██░░░░░░░░ 22% 217k/1M
+5h  █░░░░░░░░░ 14%
+7d  ██████░░░░ 61%
 ```
 
 - **Real posh-git formatting** — upstream tracking arrows, staged `|` unstaged counts, conflicts, stash. Not just a branch name.
@@ -86,13 +88,23 @@ Left of the `|` is the index (green), right of it is the working tree (red); unt
 
 ### Usage segment
 
-| | Meaning |
-|---|---|
-| `██████░░░░ 22% 217k/1M` | Context window used, and the token counts behind it |
-| `5h 8%` | 5-hour rate limit consumed |
-| `7d 58%` | 7-day rate limit consumed |
+Each quota gets its own bar, labels padded so the bars line up:
 
-Rate limits appear for Claude.ai Pro/Max subscribers after the first API response, and are omitted otherwise. Any additional window Claude Code adds later renders automatically.
+```
+ctx ██░░░░░░░░ 22% 217k/1M     context window used, plus the tokens behind it
+5h  █░░░░░░░░░ 14%             5-hour rate limit consumed
+7d  ██████░░░░ 61%             7-day rate limit consumed
+```
+
+The context bar bands at 70/90%; the quota bars band at 50/80%, so the same fill can be a different color on different rows — that is the thresholds doing their job, not an inconsistency.
+
+Rate limits appear for Claude.ai Pro/Max subscribers after the first API response. When they are absent the quota rows disappear and the context bar drops its label, collapsing to a single line. Any additional window Claude Code adds later gets its own row automatically, and the labels re-pad to fit.
+
+Set `rateLayout: 'inline'` for the compact one-line form instead:
+
+```
+██░░░░░░░░ 22% 217k/1M | 5h 14% | 7d 61%
+```
 
 ### The bar
 
@@ -121,7 +133,8 @@ Everything lives in the `CONFIG` block at the top of `dapperline.js`.
 | `showFastMode` | `true` | `🚀` when fast mode is on |
 | `barWidth` | `10` | Cells per usage bar |
 | `showTokens` | `true` | Token counts next to the context percentage |
-| `showReset` | `false` | Time until each rate-limit window resets (`5h 8% 25m`) |
+| `rateLayout` | `'lines'` | One bar row per quota. `'inline'` appends them to the context line |
+| `showReset` | `false` | Time until each rate-limit window resets (`5h 14% 25m`) |
 | `showCost` | `false` | Session cost in USD |
 | `showDuration` | `false` | Session elapsed time |
 | `palette` | `'daltonized'` | `'classic'` for the usual green → yellow → red |

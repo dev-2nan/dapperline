@@ -10,7 +10,7 @@
 
 const { execFileSync } = require('child_process');
 const path = require('path');
-const { render, COLOR, GLYPH } = require('../dapperline.js');
+const { render, CONFIG, COLOR, GLYPH } = require('../dapperline.js');
 
 const plain = process.argv.includes('--plain');
 const strip = s => s.replace(/\x1b\[[0-9;]*m/g, '');
@@ -73,6 +73,21 @@ for (const [name, over] of CASES) {
   }
 }
 
+// ── rate-limit layouts ───────────────────────────────────────────────────
+console.log('\n\n═══ rateLayout ═══');
+const originalLayout = CONFIG.rateLayout;
+for (const layout of ['lines', 'inline']) {
+  CONFIG.rateLayout = layout;
+  process.stdout.write(`\n── ${layout}\n`);
+  try {
+    for (const line of render(merge())) console.log('   ' + show(line));
+  } catch (e) {
+    failed++;
+    console.log(`   THREW: ${e.message}`);
+  }
+}
+CONFIG.rateLayout = originalLayout;
+
 // ── terminal capability fallbacks ────────────────────────────────────────
 // COLOR/GLYPH are resolved from the environment at load time, so each mode
 // needs its own process.
@@ -104,6 +119,6 @@ for (const [name, vars] of ENVS) {
   }
 }
 
-const total = CASES.length + ENVS.length;
+const total = CASES.length + ENVS.length + 2;   // + the two rateLayout checks
 console.log(`\n${total - failed}/${total} checks rendered.`);
 process.exit(failed ? 1 : 0);

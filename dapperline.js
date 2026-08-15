@@ -33,6 +33,10 @@ const CONFIG = {
   barWidth:        10,     // cells per usage bar
   showTokens:      true,   // token counts next to the context percentage (217k/1M)
   showReset:       false,  // time until each rate-limit window resets
+
+  // 'lines' gives every rate-limit window its own bar line, aligned under the
+  // context bar. 'inline' appends them to the context line as "| 5h 14%".
+  rateLayout:      'lines',
   showCost:        false,  // session cost in USD
   showDuration:    false,  // session elapsed time
 
@@ -326,13 +330,14 @@ const until = ts => {
 
 const RATE_ORDER = ['five_hour', 'seven_day'];
 const RATE_LABEL = { five_hour: '5h', seven_day: '7d' };
+const CTX_LABEL = 'ctx';
 
 /**
- * Renders every window under rate_limits. Claude Code currently sends only
- * five_hour and seven_day, but any window added later shows up automatically
- * using its key as the label.
+ * Every window under rate_limits, as {label, pct, reset}. Claude Code
+ * currently sends only five_hour and seven_day, but any window added later
+ * shows up automatically using its key as the label.
  */
-function renderRates(rl) {
+function rateEntries(rl) {
   if (!rl) return [];
   const known = RATE_ORDER.filter(k => rl[k]);
   const extra = Object.keys(rl).filter(k => !RATE_ORDER.includes(k));
@@ -342,13 +347,23 @@ function renderRates(rl) {
     if (p == null) return null;
     const label = RATE_LABEL[k] ||
       k.replace(/^five_hour/, '5h').replace(/^seven_day/, '7d').replace(/_/g, ' ').trim();
-    let seg = `${paint(label, C.gray)} ${paint(`${Math.round(p)}%`, lv(p, CONFIG.limits.rate))}`;
-    if (CONFIG.showReset) {
-      const left = until(w.resets_at);
-      if (left) seg += ` ${paint(left, C.gray)}`;
-    }
-    return seg;
+    return { label, pct: Math.round(p), reset: until(w.resets_at) };
   }).filter(Boolean);
+}
+
+/** "5h 14%" for the inline layout. */
+function rateInline(e) {
+  let seg = `${paint(e.label, C.gray)} ${paint(`${e.pct}%`, lv(e.pct, CONFIG.limits.rate))}`;
+  if (CONFIG.showReset && e.reset) seg += ` ${paint(e.reset, C.gray)}`;
+  return seg;
+}
+
+/** "5h  █░░░░░░░░░ 14%" — one bar line per window, aligned with the context bar. */
+function rateLine(e, labelW) {
+  let seg = `${paint(e.label.padEnd(labelW), C.gray)} ${renderBar(e.pct, CONFIG.limits.rate)}` +
+            ` ${paint(`${e.pct}%`, lv(e.pct, CONFIG.limits.rate))}`;
+  if (CONFIG.showReset && e.reset) seg += ` ${paint(e.reset, C.gray)}`;
+  return seg;
 }
 
 /** "Opus 5 (1M context)" → "Opus 5" */
@@ -371,9 +386,15 @@ function render(d) {
   head.push(`${G.dir}${path.basename(cwd)}`);
   if (g) head.push(renderGit(g));
 
+  const rates = rateEntries(d.rate_limits);
+  const stacked = CONFIG.rateLayout === 'lines' && rates.length > 0;
+  // Line up the bars by padding every label to the widest one.
+  const labelW = stacked ? Math.max(CTX_LABEL.length, ...rates.map(r => r.label.length)) : 0;
+
   const cw = d.context_window || {};
   const pct = Math.floor(cw.used_percentage || 0);   // may be null early on
-  let ctx = `${renderBar(pct, CONFIG.limits.context)} ${paint(`${pct}%`, lv(pct, CONFIG.limits.context))}`;
+  let ctx = stacked ? `${paint(CTX_LABEL.padEnd(labelW), C.gray)} ` : '';
+  ctx += `${renderBar(pct, CONFIG.limits.context)} ${paint(`${pct}%`, lv(pct, CONFIG.limits.context))}`;
   if (CONFIG.showTokens && cw.context_window_size) {
     // used_percentage is computed from input tokens, so total_input_tokens is
     // the number that agrees with it.
@@ -386,9 +407,11 @@ function render(d) {
   const segs = [ctx];
   if (CONFIG.showCost) segs.push(paint(`$${cost.toFixed(2)}`, lv(cost, CONFIG.limits.cost)));
   if (CONFIG.showDuration) segs.push(paint(fmtDur(durMs), lv(Math.floor(durMs / 60000), CONFIG.limits.time)));
-  segs.push(...renderRates(d.rate_limits));
+  if (!stacked) segs.push(...rates.map(rateInline));
 
-  return [head.join(' '), segs.join(` ${paint('|', C.gray)} `)];
+  const lines = [head.join(' '), segs.join(` ${paint('|', C.gray)} `)];
+  if (stacked) lines.push(...rates.map(e => rateLine(e, labelW)));
+  return lines;
 }
 
 module.exports = { render, renderBar, CONFIG, COLOR, GLYPH };
