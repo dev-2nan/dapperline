@@ -1,0 +1,8 @@
+# Keep LF in the repo on every platform. Without this, Windows checkouts commit
+# CRLF back and the file churns between contributors.
+* text=auto eol=lf
+
+# The status line script is executed directly on Unix; CRLF would break the
+# shebang line.
+*.js text eol=lf
+*.sh text eol=lf

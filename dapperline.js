@@ -2,14 +2,19 @@
 /**
  * dapperline — a posh-git style status line for Claude Code.
  *
- *   [Opus 5] 📁 repo [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
- *   ██░░░░░░░░ 22% 217k/1M | 5h 8% | 7d 58%
+ *   [Opus 5] ⚡xhigh 💡 📁 repo [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
+ *   ██████░░░░ 22% 217k/1M | 5h 8% | 7d 58%
  *
- * Line 1  model · directory · git status in posh-git's bracketed format
+ * Line 1  model · reasoning effort · directory · git status (posh-git format)
  * Line 2  context window and rate-limit usage, colored by threshold
  *
- * Reads Claude Code's status line JSON on stdin, writes the rendered line(s)
- * to stdout. See https://code.claude.com/docs/en/statusline
+ * The usage bars are gradient-filled along the *threshold* axis, so the point
+ * where the color changes is the warning or danger line itself. Unfilled cells
+ * keep a dimmed version of their band color, which means the thresholds stay
+ * visible even before you reach them.
+ *
+ * Reads Claude Code's status line JSON on stdin, writes rendered lines to
+ * stdout. See https://code.claude.com/docs/en/statusline
  */
 
 // ─────────────────────────── config ───────────────────────────
@@ -18,19 +23,33 @@ const CONFIG = {
   alwaysShowZeros: true,   // posh-git style: always print +0 ~0 -0
   showStash:       true,   // $n stash count (read from reflog, costs no process)
 
-  // Model name
-  shortenModel:    true,   // drop a trailing parenthetical: "Opus 5 (1M context)" → "Opus 5"
+  // Model segment
+  shortenModel:    true,   // "Opus 5 (1M context)" → "Opus 5"
+  showEffort:      true,   // ⚡xhigh reasoning effort
+  showThinking:    true,   // 💡 when extended thinking is on
+  showFastMode:    true,   // 🚀 when fast mode is on
 
   // Usage segment
+  barWidth:        10,     // cells per usage bar
   showTokens:      true,   // token counts next to the context percentage (217k/1M)
   showReset:       false,  // time until each rate-limit window resets
   showCost:        false,  // session cost in USD
   showDuration:    false,  // session elapsed time
 
-  // 'daltonized' keeps green/red apart for color-vision deficiency by using
-  // cyan → yellow → bold red, which also separates the levels by brightness.
+  // 'daltonized' keeps the levels apart for color-vision deficiency by using
+  // cyan → yellow → red, which separates them by brightness as well as hue.
   // 'classic' is the usual green → yellow → red.
   palette: 'daltonized',
+
+  // 'auto' probes the terminal. Force with 'truecolor', '256', '16', or 'none'.
+  // macOS Terminal.app has no 24-bit support; iTerm2, WezTerm, Windows
+  // Terminal, and most Linux terminals do.
+  color: 'auto',
+
+  // 'auto' uses Unicode blocks and arrows, and emoji when the terminal is
+  // likely to render them at a predictable width. 'ascii' is the safe subset
+  // for TTYs, older PuTTY, and CI logs.
+  glyphs: 'auto',
 
   // A value at or above `warn` turns yellow; at or above `danger` turns red.
   limits: {
@@ -50,19 +69,119 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const C = {
-  reset: '\x1b[0m', bold: '\x1b[1m',
-  red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
-  magenta: '\x1b[35m', cyan: '\x1b[36m', gray: '\x1b[90m',
-  bRed: '\x1b[91m', bYellow: '\x1b[93m', bCyan: '\x1b[96m',
-};
+// ─────────────────────── terminal capability ───────────────────────
+/**
+ * Returns 'truecolor' | '256' | '16' | 'none'.
+ *
+ * NO_COLOR is honored first (https://no-color.org). COLORTERM is the only
+ * reliable 24-bit signal, but Windows Terminal does not set it, so WT_SESSION
+ * and known TERM_PROGRAM values are checked too.
+ */
+function detectColor() {
+  if (CONFIG.color !== 'auto') return CONFIG.color;
+  const e = process.env;
+  if (e.NO_COLOR != null) return 'none';
+  if (/^(truecolor|24bit)$/i.test(e.COLORTERM || '')) return 'truecolor';
+  if (e.WT_SESSION) return 'truecolor';                      // Windows Terminal
+  if (/^(iTerm\.app|WezTerm|vscode|Hyper|ghostty)$/i.test(e.TERM_PROGRAM || '')) return 'truecolor';
+  if (/-256color$/.test(e.TERM || '')) return '256';         // incl. macOS Terminal.app
+  if (e.TERM === 'dumb') return 'none';
+  return '16';
+}
+
+/**
+ * Emoji width is inconsistent across terminals, which knocks the line out of
+ * alignment. Only enable it where rendering is predictable.
+ */
+function detectGlyphs() {
+  if (CONFIG.glyphs !== 'auto') return CONFIG.glyphs;
+  const e = process.env;
+  if (e.TERM === 'dumb' || e.TERM === 'linux') return 'ascii';
+  return 'unicode';
+}
+
+const COLOR = detectColor();
+const GLYPH = detectGlyphs();
+const UNI = GLYPH === 'unicode';
+
+const G = UNI
+  ? { full: '█', empty: '░', even: '≡', ahead: '↑', behind: '↓',
+      detached: '➦', clean: '✔', gone: '×', dir: '📁 ', effort: '⚡', think: '💡', fast: '🚀' }
+  : { full: '#', empty: '.', even: '=', ahead: '^', behind: 'v',
+      detached: '@', clean: 'ok', gone: 'x', dir: '', effort: '*', think: '~', fast: '>' };
+
+// ─────────────────────────── color ───────────────────────────
+const RESET = COLOR === 'none' ? '' : '\x1b[0m';
+const BOLD = COLOR === 'none' ? '' : '\x1b[1m';
+
+/** Basic 16-color codes, used directly and as the non-truecolor fallback. */
+const C = COLOR === 'none'
+  ? new Proxy({}, { get: () => '' })
+  : {
+      red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
+      magenta: '\x1b[35m', cyan: '\x1b[36m', gray: '\x1b[90m',
+      bRed: '\x1b[91m', bYellow: '\x1b[93m', bCyan: '\x1b[96m',
+    };
+
+/**
+ * Per-band [light, deep] RGB pairs. Each band gradates within itself, so the
+ * bar looks continuous while the band boundaries — the thresholds — stay crisp.
+ */
+const RGB = {
+  daltonized: {
+    ok:     [[110, 231, 231], [ 56, 189, 189]],
+    warn:   [[250, 220, 120], [240, 190,  40]],
+    danger: [[255, 130, 110], [214,  45,  35]],
+  },
+  classic: {
+    ok:     [[130, 225, 150], [ 46, 175,  80]],
+    warn:   [[250, 220, 120], [240, 190,  40]],
+    danger: [[255, 130, 110], [214,  45,  35]],
+  },
+}[CONFIG.palette] || {};
 
 const LEVEL = CONFIG.palette === 'classic'
-  ? { ok: C.green, warn: C.yellow, danger: C.bold + C.red }
-  : { ok: C.bCyan, warn: C.bYellow, danger: C.bold + C.bRed };
+  ? { ok: C.green, warn: C.yellow, danger: BOLD + C.red }
+  : { ok: C.bCyan, warn: C.bYellow, danger: BOLD + C.bRed };
 
 const lv = (v, t) => (v >= t.danger ? LEVEL.danger : v >= t.warn ? LEVEL.warn : LEVEL.ok);
-const paint = (text, color) => `${color}${text}${C.reset}`;
+const paint = (text, color) => (COLOR === 'none' ? String(text) : `${color}${text}${RESET}`);
+
+const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+const mix = (x, y, t) => [lerp(x[0], y[0], t), lerp(x[1], y[1], t), lerp(x[2], y[2], t)];
+const fg = ([r, g, b]) => `\x1b[38;2;${r};${g};${b}m`;
+const dim = ([r, g, b], k = 0.3) => [Math.round(r * k), Math.round(g * k), Math.round(b * k)];
+
+/** Color for the point `p` on the 0-100 axis, gradating inside each band. */
+function bandColor(p, t) {
+  if (p < t.warn) return mix(RGB.ok[0], RGB.ok[1], t.warn ? p / t.warn : 0);
+  if (p < t.danger) return mix(RGB.warn[0], RGB.warn[1], (p - t.warn) / (t.danger - t.warn));
+  return mix(RGB.danger[0], RGB.danger[1], Math.min(1, (p - t.danger) / (100 - t.danger)));
+}
+
+/**
+ * Renders the usage bar. With 24-bit color each cell is tinted by the
+ * percentage it represents, so the warning and danger lines are visible as
+ * color changes; unfilled cells keep a dimmed tint of the same band. Without
+ * truecolor the whole bar falls back to one flat level color.
+ */
+function renderBar(pct, t) {
+  const w = CONFIG.barWidth;
+  const filled = Math.max(0, Math.min(w, Math.floor((pct / 100) * w)));
+
+  if (COLOR !== 'truecolor') {
+    const flat = lv(pct, t);
+    return paint(G.full.repeat(filled) + G.empty.repeat(w - filled), flat);
+  }
+
+  let out = '';
+  for (let i = 0; i < w; i++) {
+    const cellPct = ((i + 0.5) / w) * 100;   // the value this cell stands for
+    const rgb = bandColor(cellPct, t);
+    out += i < filled ? fg(rgb) + G.full : fg(dim(rgb)) + G.empty;
+  }
+  return out + RESET;
+}
 
 const git = (args, cwd) => execSync(`git ${args}`, {
   cwd, encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true,
@@ -152,18 +271,18 @@ function stashCount(cwd) {
 function renderGit(s) {
   let name, color;
   if (s.branch === '(detached)') {
-    name = `➦ ${s.oid}`; color = C.magenta;
+    name = `${G.detached} ${s.oid}`; color = C.magenta;
   } else {
     name = s.branch || s.oid || '?'; color = C.gray;
   }
 
   let track = '';
   if (s.branch !== '(detached)' && s.upstream) {
-    if (!s.ab) { track = ' ×'; color = C.magenta; }               // upstream is gone
-    else if (s.ahead && s.behind) { track = ` ↑${s.ahead}↓${s.behind}`; color = C.yellow; }
-    else if (s.ahead) { track = ` ↑${s.ahead}`; color = C.green; }
-    else if (s.behind) { track = ` ↓${s.behind}`; color = C.red; }
-    else { track = ' ≡'; color = C.cyan; }
+    if (!s.ab) { track = ` ${G.gone}`; color = C.magenta; }        // upstream is gone
+    else if (s.ahead && s.behind) { track = ` ${G.ahead}${s.ahead}${G.behind}${s.behind}`; color = C.yellow; }
+    else if (s.ahead) { track = ` ${G.ahead}${s.ahead}`; color = C.green; }
+    else if (s.behind) { track = ` ${G.behind}${s.behind}`; color = C.red; }
+    else { track = ` ${G.even}`; color = C.cyan; }
   }
 
   const counts = g =>
@@ -177,7 +296,7 @@ function renderGit(s) {
   if (idx && wt) parts.push(paint('|', C.gray));
   if (wt) parts.push(paint(wt, C.red));
   if (s.conflict) parts.push(paint(`!${s.conflict}`, C.magenta));
-  if (!idx && !wt && !s.conflict) parts.push(paint('✔', C.green));
+  if (!idx && !wt && !s.conflict) parts.push(paint(G.clean, C.green));
   if (s.stash) parts.push(paint(`$${s.stash}`, C.gray));
 
   return `${paint('[', C.yellow)}${parts.join(' ')}${paint(']', C.yellow)}`;
@@ -240,45 +359,48 @@ const shortModel = n => {
 
 /** Renders both lines. Exported so tests can feed it fixtures. */
 function render(d) {
-  const cwd = d.workspace?.current_dir || d.cwd;
+  const cwd = d.workspace?.current_dir || d.cwd || process.cwd();
   const g = readGit(cwd);
 
-  const pct = Math.floor(d.context_window?.used_percentage || 0); // may be null early on
-  const ctxColor = lv(pct, CONFIG.limits.context);
-  const filled = Math.max(0, Math.min(10, Math.floor(pct / 10)));
-  const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
-
-  const cost = d.cost?.total_cost_usd || 0;
-  const durMs = d.cost?.total_duration_ms || 0;
-
-  const line1 = [
-    paint(`[${shortModel(d.model?.display_name)}]`, C.cyan),
-    `📁 ${path.basename(cwd)}`,
-    g ? renderGit(g) : '',
-  ].filter(Boolean).join(' ');
+  const head = [paint(`[${shortModel(d.model?.display_name)}]`, C.cyan)];
+  if (CONFIG.showEffort && d.effort?.level) {
+    head.push(paint(`${G.effort}${d.effort.level}`, C.yellow));
+  }
+  if (CONFIG.showThinking && d.thinking?.enabled) head.push(paint(G.think, C.yellow));
+  if (CONFIG.showFastMode && d.fast_mode) head.push(paint(G.fast, C.magenta));
+  head.push(`${G.dir}${path.basename(cwd)}`);
+  if (g) head.push(renderGit(g));
 
   const cw = d.context_window || {};
-  let ctx = `${paint(bar, ctxColor)} ${paint(`${pct}%`, ctxColor)}`;
+  const pct = Math.floor(cw.used_percentage || 0);   // may be null early on
+  let ctx = `${renderBar(pct, CONFIG.limits.context)} ${paint(`${pct}%`, lv(pct, CONFIG.limits.context))}`;
   if (CONFIG.showTokens && cw.context_window_size) {
     // used_percentage is computed from input tokens, so total_input_tokens is
     // the number that agrees with it.
     ctx += ` ${paint(`${fmtTok(cw.total_input_tokens || 0)}/${fmtTok(cw.context_window_size)}`, C.gray)}`;
   }
 
+  const cost = d.cost?.total_cost_usd || 0;
+  const durMs = d.cost?.total_duration_ms || 0;
+
   const segs = [ctx];
   if (CONFIG.showCost) segs.push(paint(`$${cost.toFixed(2)}`, lv(cost, CONFIG.limits.cost)));
   if (CONFIG.showDuration) segs.push(paint(fmtDur(durMs), lv(Math.floor(durMs / 60000), CONFIG.limits.time)));
   segs.push(...renderRates(d.rate_limits));
 
-  return [line1, segs.join(` ${paint('|', C.gray)} `)];
+  return [head.join(' '), segs.join(` ${paint('|', C.gray)} `)];
 }
 
-module.exports = { render, CONFIG };
+module.exports = { render, renderBar, CONFIG, COLOR, GLYPH };
 
 // Run as a status line command only when invoked directly, so `require()` in
 // tests does not block waiting on stdin.
 if (require.main === module) {
   let input = '';
+  // setEncoding lets Node's StringDecoder hold partial UTF-8 sequences that
+  // straddle a chunk boundary; concatenating raw Buffers would corrupt
+  // non-ASCII paths.
+  process.stdin.setEncoding('utf8');
   process.stdin.on('data', c => (input += c));
   process.stdin.on('end', () => {
     if (CONFIG.debugDump) { try { fs.writeFileSync(CONFIG.debugDump, input); } catch {} }
