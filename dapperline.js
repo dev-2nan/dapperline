@@ -30,13 +30,22 @@ const CONFIG = {
   showFastMode:    true,   // 🚀 when fast mode is on
 
   // Usage segment
-  barWidth:        10,     // cells per usage bar
+  barWidth:        30,     // cells per usage bar
   showTokens:      true,   // token counts next to the context percentage (217k/1M)
-  showReset:       false,  // time until each rate-limit window resets
+  showReset:       true,   // time until each rate-limit window resets
+  rowIcons:        true,   // 🧠/⏳/📅 per row instead of ctx/5h/7d labels
 
   // 'lines' gives every rate-limit window its own bar line, aligned under the
   // context bar. 'inline' appends them to the context line as "| 5h 14%".
   rateLayout:      'lines',
+
+  // 'identity' colors each bar by which metric it is, ramping light → deep, so
+  // stacked rows stay distinct even when they share a threshold band. The
+  // percentage still carries the threshold color, and a bar in the danger band
+  // overrides to red — separation matters less than the alarm at that point.
+  // 'threshold' colors the whole bar by band instead (thresholds visible as
+  // color changes along the bar).
+  barColor:        'identity',
   showCost:        false,  // session cost in USD
   showDuration:    false,  // session elapsed time
 
@@ -144,6 +153,18 @@ const RGB = {
   },
 }[CONFIG.palette] || {};
 
+/**
+ * Per-row identity hues, [light, deep]. Chosen to stay apart under
+ * deuteranopia/protanopia: teal, violet, and amber differ in brightness as
+ * well as hue, unlike the pink/blue/yellow trio these are modelled on.
+ */
+const IDENTITY = {
+  ctx:        [[130, 240, 240], [ 40, 160, 160]],  // teal
+  five_hour:  [[190, 170, 255], [110,  80, 210]],  // violet
+  seven_day:  [[255, 215, 140], [220, 150,  30]],  // amber
+  _default:   [[190, 198, 214], [110, 120, 140]],  // slate, for unknown windows
+};
+
 const LEVEL = CONFIG.palette === 'classic'
   ? { ok: C.green, warn: C.yellow, danger: BOLD + C.red }
   : { ok: C.bCyan, warn: C.bYellow, danger: BOLD + C.bRed };
@@ -163,13 +184,22 @@ function bandColor(p, t) {
   return mix(RGB.danger[0], RGB.danger[1], Math.min(1, (p - t.danger) / (100 - t.danger)));
 }
 
+/** Color for one cell, under whichever barColor mode is active. */
+function cellColor(cellPct, t, id, pct) {
+  if (CONFIG.barColor === 'threshold') return bandColor(cellPct, t);
+  // Identity mode: a light → deep ramp in this row's own hue, so stacked rows
+  // stay distinct. Once the value is genuinely in the danger band the alarm
+  // wins and the whole bar goes red.
+  const pair = pct >= t.danger ? RGB.danger : (IDENTITY[id] || IDENTITY._default);
+  return mix(pair[0], pair[1], cellPct / 100);
+}
+
 /**
- * Renders the usage bar. With 24-bit color each cell is tinted by the
- * percentage it represents, so the warning and danger lines are visible as
- * color changes; unfilled cells keep a dimmed tint of the same band. Without
- * truecolor the whole bar falls back to one flat level color.
+ * Renders the usage bar. With 24-bit color each cell is tinted individually;
+ * unfilled cells keep a dimmed tint so the shape stays readable. Without
+ * truecolor the whole bar falls back to one flat threshold color.
  */
-function renderBar(pct, t) {
+function renderBar(pct, t, id) {
   const w = CONFIG.barWidth;
   const filled = Math.max(0, Math.min(w, Math.floor((pct / 100) * w)));
 
@@ -181,7 +211,7 @@ function renderBar(pct, t) {
   let out = '';
   for (let i = 0; i < w; i++) {
     const cellPct = ((i + 0.5) / w) * 100;   // the value this cell stands for
-    const rgb = bandColor(cellPct, t);
+    const rgb = cellColor(cellPct, t, id, pct);
     out += i < filled ? fg(rgb) + G.full : fg(dim(rgb)) + G.empty;
   }
   return out + RESET;
@@ -332,6 +362,35 @@ const RATE_ORDER = ['five_hour', 'seven_day'];
 const RATE_LABEL = { five_hour: '5h', seven_day: '7d' };
 const CTX_LABEL = 'ctx';
 
+// Row prefixes. Icons separate the rows by shape, so the rows stay
+// distinguishable even when all three sit in the same threshold band and
+// therefore share a color. Falls back to the text labels without them.
+const ICON = { ctx: '🧠', five_hour: '⏳', seven_day: '📅' };
+const useIcons = () => CONFIG.rowIcons && UNI;
+
+// Codepoints with Emoji_Presentation, which terminals render two columns wide.
+// padEnd counts them as one, so padding has to consult this instead.
+const WIDE = [
+  [0x231a, 0x231b], [0x23e9, 0x23ec], [0x23f0, 0x23f0], [0x23f3, 0x23f3],
+  [0x25fd, 0x25fe], [0x2614, 0x2615], [0x2648, 0x2653], [0x267f, 0x267f],
+  [0x2693, 0x2693], [0x26a1, 0x26a1], [0x26aa, 0x26ab], [0x26bd, 0x26be],
+  [0x26c4, 0x26c5], [0x26ce, 0x26ce], [0x26d4, 0x26d4], [0x26ea, 0x26ea],
+  [0x26f2, 0x26f3], [0x26f5, 0x26f5], [0x26fa, 0x26fa], [0x26fd, 0x26fd],
+  [0x2705, 0x2705], [0x270a, 0x270b], [0x2728, 0x2728], [0x274c, 0x274c],
+  [0x274e, 0x274e], [0x2753, 0x2755], [0x2757, 0x2757], [0x2795, 0x2797],
+  [0x27b0, 0x27b0], [0x27bf, 0x27bf], [0x2b1b, 0x2b1c], [0x2b50, 0x2b50],
+  [0x2b55, 0x2b55], [0x1f300, 0x1faff],
+];
+const dispWidth = s => {
+  let n = 0;
+  for (const ch of s) {
+    const c = ch.codePointAt(0);
+    n += WIDE.some(([lo, hi]) => c >= lo && c <= hi) ? 2 : 1;
+  }
+  return n;
+};
+const padTo = (s, w) => s + ' '.repeat(Math.max(0, w - dispWidth(s)));
+
 /**
  * Every window under rate_limits, as {label, pct, reset}. Claude Code
  * currently sends only five_hour and seven_day, but any window added later
@@ -347,7 +406,9 @@ function rateEntries(rl) {
     if (p == null) return null;
     const label = RATE_LABEL[k] ||
       k.replace(/^five_hour/, '5h').replace(/^seven_day/, '7d').replace(/_/g, ' ').trim();
-    return { label, pct: Math.round(p), reset: until(w.resets_at) };
+    // An unknown window has no icon, so it keeps its text label as the prefix.
+    const prefix = (useIcons() && ICON[k]) || label;
+    return { key: k, label, prefix, pct: Math.round(p), reset: until(w.resets_at) };
   }).filter(Boolean);
 }
 
@@ -358,11 +419,12 @@ function rateInline(e) {
   return seg;
 }
 
-/** "5h  █░░░░░░░░░ 14%" — one bar line per window, aligned with the context bar. */
-function rateLine(e, labelW) {
-  let seg = `${paint(e.label.padEnd(labelW), C.gray)} ${renderBar(e.pct, CONFIG.limits.rate)}` +
-            ` ${paint(`${e.pct}%`, lv(e.pct, CONFIG.limits.rate))}`;
-  if (CONFIG.showReset && e.reset) seg += ` ${paint(e.reset, C.gray)}`;
+/** "⏳ ████░░░░ 14% (reset 9h25m)" — one bar row per window. */
+function rateLine(e, prefixW) {
+  let seg = `${paint(padTo(e.prefix, prefixW), C.gray)} ` +
+            `${renderBar(e.pct, CONFIG.limits.rate, e.key)} ` +
+            `${paint(`${e.pct}%`, lv(e.pct, CONFIG.limits.rate))}`;
+  if (CONFIG.showReset && e.reset) seg += ` ${paint(`(reset ${e.reset})`, C.gray)}`;
   return seg;
 }
 
@@ -388,13 +450,16 @@ function render(d) {
 
   const rates = rateEntries(d.rate_limits);
   const stacked = CONFIG.rateLayout === 'lines' && rates.length > 0;
-  // Line up the bars by padding every label to the widest one.
-  const labelW = stacked ? Math.max(CTX_LABEL.length, ...rates.map(r => r.label.length)) : 0;
+  const ctxPrefix = (useIcons() && ICON.ctx) || CTX_LABEL;
+  // Line up the bars by padding every prefix to the widest one.
+  const prefixW = stacked
+    ? Math.max(dispWidth(ctxPrefix), ...rates.map(r => dispWidth(r.prefix)))
+    : 0;
 
   const cw = d.context_window || {};
   const pct = Math.floor(cw.used_percentage || 0);   // may be null early on
-  let ctx = stacked ? `${paint(CTX_LABEL.padEnd(labelW), C.gray)} ` : '';
-  ctx += `${renderBar(pct, CONFIG.limits.context)} ${paint(`${pct}%`, lv(pct, CONFIG.limits.context))}`;
+  let ctx = stacked ? `${paint(padTo(ctxPrefix, prefixW), C.gray)} ` : '';
+  ctx += `${renderBar(pct, CONFIG.limits.context, 'ctx')} ${paint(`${pct}%`, lv(pct, CONFIG.limits.context))}`;
   if (CONFIG.showTokens && cw.context_window_size) {
     // used_percentage is computed from input tokens, so total_input_tokens is
     // the number that agrees with it.
@@ -410,7 +475,7 @@ function render(d) {
   if (!stacked) segs.push(...rates.map(rateInline));
 
   const lines = [head.join(' '), segs.join(` ${paint('|', C.gray)} `)];
-  if (stacked) lines.push(...rates.map(e => rateLine(e, labelW)));
+  if (stacked) lines.push(...rates.map(e => rateLine(e, prefixW)));
   return lines;
 }
 

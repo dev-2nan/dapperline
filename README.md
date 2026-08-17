@@ -4,13 +4,13 @@ A [posh-git](https://github.com/dahlbyk/posh-git) style status line for [Claude 
 
 ```
 [Opus 5] ⚡xhigh 💡 📁 dapperline [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
-ctx ██░░░░░░░░ 22% 217k/1M
-5h  █░░░░░░░░░ 14%
-7d  ██████░░░░ 61%
+🧠 █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M
+⏳ ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)
+📅 ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)
 ```
 
 - **Real posh-git formatting** — upstream tracking arrows, staged `|` unstaged counts, conflicts, stash. Not just a branch name.
-- **Bars gradate along the threshold axis.** The point where the color changes *is* the warning line, so you can see how close you are without reading the number.
+- **Each quota row has its own hue and icon**, so stacked bars never blur together — while the percentage still carries the threshold color, and a bar in the danger band turns red anyway.
 - **One `git` process per render.** Most status lines spawn five or six.
 - **Degrades cleanly** — 24-bit, 256-color, 16-color, `NO_COLOR`, and an ASCII-only mode, picked automatically.
 - **Color-vision-deficient palette by default** — cyan → yellow → red, separated by brightness as well as hue.
@@ -88,15 +88,17 @@ Left of the `|` is the index (green), right of it is the working tree (red); unt
 
 ### Usage segment
 
-Each quota gets its own bar, labels padded so the bars line up:
+Each quota gets its own bar row, prefixed by an icon so the rows stay apart by shape:
 
 ```
-ctx ██░░░░░░░░ 22% 217k/1M     context window used, plus the tokens behind it
-5h  █░░░░░░░░░ 14%             5-hour rate limit consumed
-7d  ██████░░░░ 61%             7-day rate limit consumed
+🧠 █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M     context window, and the tokens behind it
+⏳ ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)   5-hour rate limit
+📅 ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)   7-day rate limit
 ```
 
-The context bar bands at 70/90%; the quota bars band at 50/80%, so the same fill can be a different color on different rows — that is the thresholds doing their job, not an inconsistency.
+Each row's bar carries its own hue — teal, violet, amber — ramping light to deep as it fills, so three rows sitting in the same threshold band are still telling apart. The **percentage** carries the threshold color instead, and a bar whose value reaches the danger band overrides to red: at that point the alarm matters more than the separation.
+
+The context bar bands at 70/90%, the quota bars at 50/80%, so the same fill can be a different color on different rows — that is the thresholds doing their job, not an inconsistency.
 
 Rate limits appear for Claude.ai Pro/Max subscribers after the first API response. When they are absent the quota rows disappear and the context bar drops its label, collapsing to a single line. Any additional window Claude Code adds later gets its own row automatically, and the labels re-pad to fit.
 
@@ -106,9 +108,9 @@ Set `rateLayout: 'inline'` for the compact one-line form instead:
 ██░░░░░░░░ 22% 217k/1M | 5h 14% | 7d 61%
 ```
 
-### The bar
+### `barColor: 'threshold'`
 
-Each cell is tinted by the percentage *it* represents rather than by the current value, so the bands are fixed in place:
+The alternative mode tints each cell by the percentage *it* represents rather than by the current value, so the bands sit at fixed positions and the thresholds are visible as color changes along the bar:
 
 ```
 cell:    1    2    3    4    5    6    7    8    9   10
@@ -117,7 +119,7 @@ band:   ├────────── ok ──────────┤�
                               70% ↑     90% ↑
 ```
 
-Unfilled cells keep a dimmed tint of their own band, so the thresholds are visible before you reach them. Below 24-bit color the whole bar falls back to a single level color.
+This reads well for a single bar but makes stacked rows hard to separate, since rows in the same band come out the same color — which is why `'identity'` is the default. Unfilled cells keep a dimmed tint either way, and below 24-bit color the whole bar falls back to a single level color.
 
 ## Configuration
 
@@ -131,10 +133,12 @@ Everything lives in the `CONFIG` block at the top of `dapperline.js`.
 | `showEffort` | `true` | `⚡xhigh` reasoning effort |
 | `showThinking` | `true` | `💡` when extended thinking is on |
 | `showFastMode` | `true` | `🚀` when fast mode is on |
-| `barWidth` | `10` | Cells per usage bar |
+| `barWidth` | `30` | Cells per usage bar |
 | `showTokens` | `true` | Token counts next to the context percentage |
 | `rateLayout` | `'lines'` | One bar row per quota. `'inline'` appends them to the context line |
-| `showReset` | `false` | Time until each rate-limit window resets (`5h 14% 25m`) |
+| `rowIcons` | `true` | 🧠/⏳/📅 row prefixes instead of `ctx`/`5h`/`7d` text |
+| `barColor` | `'identity'` | Per-row hue, red in the danger band. `'threshold'` colors the whole bar by band |
+| `showReset` | `true` | Time until each rate-limit window resets (`(reset 9h24m)`) |
 | `showCost` | `false` | Session cost in USD |
 | `showDuration` | `false` | Session elapsed time |
 | `palette` | `'daltonized'` | `'classic'` for the usual green → yellow → red |
