@@ -36,6 +36,14 @@ const CONFIG = {
   rowIcons:        true,   // 🧠/⏳/📅 prefix on each usage row
   rowLabels:       true,   // spell the row out: "Context", "5h quota", "7d quota"
 
+  // Bar glyphs. 'block' is █/░, which some fonts draw at different heights —
+  // the empty half then sits visibly higher than the filled half. 'line' uses
+  // ━/─, both centered on the same axis, so they can never drift. 'solid'
+  // paints every cell █ and separates filled from empty by brightness alone,
+  // which needs 24-bit color. 'auto' picks solid when truecolor is available
+  // and block otherwise.
+  barStyle:        'auto',
+
   // 'lines' gives every rate-limit window its own bar line, aligned under the
   // context bar. 'inline' appends them to the context line as "| 5h 14%".
   rateLayout:      'lines',
@@ -196,6 +204,21 @@ function cellColor(cellPct, t, id, pct) {
 }
 
 /**
+ * Filled and empty glyphs for the configured bar style. 'solid' and 'line'
+ * both need Unicode; 'solid' additionally needs truecolor, since it separates
+ * filled from empty by brightness rather than by shape.
+ */
+function barGlyphs() {
+  let style = CONFIG.barStyle;
+  if (!UNI) return { full: G.full, empty: G.empty };            // ASCII: # and .
+  if (style === 'auto') style = COLOR === 'truecolor' ? 'solid' : 'block';
+  if (style === 'solid' && COLOR !== 'truecolor') style = 'block';
+  if (style === 'line') return { full: '━', empty: '─' };
+  if (style === 'solid') return { full: '█', empty: '█' };
+  return { full: '█', empty: '░' };
+}
+
+/**
  * Renders the usage bar. With 24-bit color each cell is tinted individually;
  * unfilled cells keep a dimmed tint so the shape stays readable. Without
  * truecolor the whole bar falls back to one flat threshold color.
@@ -203,17 +226,18 @@ function cellColor(cellPct, t, id, pct) {
 function renderBar(pct, t, id) {
   const w = CONFIG.barWidth;
   const filled = Math.max(0, Math.min(w, Math.floor((pct / 100) * w)));
+  const { full, empty } = barGlyphs();
 
   if (COLOR !== 'truecolor') {
     const flat = lv(pct, t);
-    return paint(G.full.repeat(filled) + G.empty.repeat(w - filled), flat);
+    return paint(full.repeat(filled) + empty.repeat(w - filled), flat);
   }
 
   let out = '';
   for (let i = 0; i < w; i++) {
     const cellPct = ((i + 0.5) / w) * 100;   // the value this cell stands for
     const rgb = cellColor(cellPct, t, id, pct);
-    out += i < filled ? fg(rgb) + G.full : fg(dim(rgb)) + G.empty;
+    out += i < filled ? fg(rgb) + full : fg(dim(rgb, 0.22)) + empty;
   }
   return out + RESET;
 }

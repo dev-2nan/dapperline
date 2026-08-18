@@ -138,6 +138,18 @@ At the default width of 30 cells, **one cell is 3.33%**. Because the percentage 
 
 Setting `barWidth` to 20 (5%), 25 (4%), or 50 (2%) makes the steps even, at the cost of thresholds landing mid-cell.
 
+### Bar glyphs
+
+`█` and `░` come from different parts of the Unicode block range, and some fonts draw them at different heights — the empty half of the bar then looks like it sits above the filled half. If that happens, switch `barStyle`:
+
+| Style | Glyphs | Note |
+|---|---|---|
+| `solid` | `█` `█` | Same glyph throughout, fill marked by brightness. Cannot misalign. Needs 24-bit color |
+| `line` | `━` `─` | Both centered on the same axis. Works in every color mode |
+| `block` | `█` `░` | The classic look, and the one prone to the drift above |
+
+`auto` uses `solid` when the terminal reports truecolor and `block` otherwise.
+
 ### `barColor: 'threshold'`
 
 The alternative mode tints each cell by the percentage *it* represents rather than by the current value, so the bands sit at fixed positions and the thresholds are visible as color changes along the bar:
@@ -164,6 +176,7 @@ Everything lives in the `CONFIG` block at the top of `dapperline.js`.
 | `showThinking` | `true` | `💡` when extended thinking is on |
 | `showFastMode` | `true` | `🚀` when fast mode is on |
 | `barWidth` | `30` | Cells per usage bar |
+| `barStyle` | `'auto'` | Bar glyphs. `'block'` is █/░, `'line'` is ━/─, `'solid'` is █ throughout with brightness alone marking the fill. `'auto'` picks solid on truecolor, block otherwise |
 | `showTokens` | `true` | Token counts next to the context percentage |
 | `rateLayout` | `'lines'` | One bar row per quota. `'inline'` appends them to the context line |
 | `rowIcons` | `true` | 🧠/⏳/📅 row prefixes |
