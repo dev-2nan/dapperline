@@ -98,6 +98,7 @@ The status line appears on the next update — a new assistant message, a `/comp
 | `➦ 87a31fc` | Detached HEAD |
 | `+` `~` `-` | Added, modified, deleted |
 | `!n` | Conflicted files |
+| `!` `~` | Trailing: the counts shown are the working tree (`!`) or the index (`~`) |
 | `$n` | Stash entries |
 
 Left of the `|` is the index (green), right of it is the working tree (red); untracked files count as working-tree adds.
@@ -107,11 +108,13 @@ A side with nothing on it is dropped entirely, so the segment stays short in the
 | Working state | Segment |
 |---|---|
 | Clean | `[main ≡]` |
-| Staged only | `[main ≡ +0 ~1 -0]` — green |
-| Working tree only | `[main ≡ +0 ~1 -0]` — red |
-| Both | `[main ≡ +1 ~0 -0 \| +0 ~1 -0]` |
+| Staged only | `[main ≡ +0 ~1 -0 ~]` |
+| Working tree only | `[main ≡ +0 ~1 -0 !]` |
+| Both | `[main ≡ +1 ~0 -0 \| +0 ~1 -0 !]` |
 
-Note that the two single-sided states print the same characters and are told apart by color alone. Set `showZeros: 'always'` for posh-git's strict form, where both sides are always present and position disambiguates them.
+The trailing symbol is posh-git's working-directory status: `!` means the counts you are looking at are the working tree, `~` means they are the index. It is what keeps a one-sided segment unambiguous without depending on color, and the working tree wins when both sides are dirty.
+
+Set `showZeros: 'always'` for posh-git's strict form, where both sides are always present.
 
 The branch name is colored by its relationship to the upstream: cyan even, green ahead, red behind, yellow diverged, gray no upstream.
 

@@ -134,9 +134,11 @@ const UNI = GLYPH === 'unicode';
 
 const G = UNI
   ? { full: '█', empty: '░', even: '≡', ahead: '↑', behind: '↓',
-      detached: '➦', gone: '×', dir: '📁 ', effort: '⚡', think: '💡', fast: '🚀' }
+      detached: '➦', gone: '×', localWorking: '!', localStaged: '~',
+      dir: '📁 ', effort: '⚡', think: '💡', fast: '🚀' }
   : { full: '#', empty: '.', even: '=', ahead: '^', behind: 'v',
-      detached: '@', gone: 'x', dir: '', effort: '*', think: '~', fast: '>' };
+      detached: '@', gone: 'x', localWorking: '!', localStaged: '~',
+      dir: '', effort: '*', think: '~', fast: '>' };
 
 // ─────────────────────────── color ───────────────────────────
 const RESET = COLOR === 'none' ? '' : '\x1b[0m';
@@ -365,6 +367,15 @@ function renderGit(s) {
   if (idx && wt) parts.push(paint('|', C.gray));
   if (wt) parts.push(paint(wt, C.red));
   if (s.conflict) parts.push(paint(`!${s.conflict}`, C.magenta));
+
+  // posh-git's trailing W: which side the counts belong to, so a segment
+  // showing only one group is still unambiguous without relying on color.
+  // Working beats index when both are dirty, matching posh-git's precedence.
+  const anyWt = s.wt.a || s.wt.m || s.wt.d;
+  const anyIdx = s.idx.a || s.idx.m || s.idx.d;
+  if (anyWt) parts.push(paint(G.localWorking, C.red));
+  else if (anyIdx) parts.push(paint(G.localStaged, C.green));
+
   if (s.stash) parts.push(paint(`$${s.stash}`, C.gray));
 
   return `${paint('[', C.yellow)}${parts.join(' ')}${paint(']', C.yellow)}`;
