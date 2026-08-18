@@ -101,7 +101,20 @@ The status line appears on the next update — a new assistant message, a `/comp
 | `$n` | Stash entries |
 | `✔` | Clean |
 
-Left of the `|` is the index (green), right of it is the working tree (red); untracked files count as working-tree adds. The branch name is colored by its relationship to the upstream: cyan even, green ahead, red behind, yellow diverged, gray no upstream.
+Left of the `|` is the index (green), right of it is the working tree (red); untracked files count as working-tree adds.
+
+A side with nothing on it is dropped entirely, so the segment stays short in the states you are in most of the time:
+
+| Working state | Segment |
+|---|---|
+| Clean | `[main ≡ ✔]` |
+| Staged only | `[main ≡ +0 ~1 -0]` — green |
+| Working tree only | `[main ≡ +0 ~1 -0]` — red |
+| Both | `[main ≡ +1 ~0 -0 \| +0 ~1 -0]` |
+
+Note that the two single-sided states print the same characters and are told apart by color alone. Set `showZeros: 'always'` for posh-git's strict form, where both sides are always present and position disambiguates them.
+
+The branch name is colored by its relationship to the upstream: cyan even, green ahead, red behind, yellow diverged, gray no upstream.
 
 ### Usage segment
 
@@ -164,7 +177,7 @@ Everything lives in the `CONFIG` block at the top of `dapperline.js`.
 
 | Option | Default | Effect |
 |---|---|---|
-| `alwaysShowZeros` | `true` | Print `+0 ~0 -0` like posh-git. `false` hides zero counts and shows `✔` when clean |
+| `showZeros` | `'section'` | `'section'` drops a side with no changes and keeps the full triplet on a side with any. `'always'` is posh-git's strict form, both sides every time. `'never'` drops every zero |
 | `showStash` | `true` | `$n` stash count |
 | `shortenModel` | `true` | Drop a trailing parenthetical: `Opus 5 (1M context)` → `Opus 5` |
 | `showEffort` | `true` | `⚡xhigh` reasoning effort |

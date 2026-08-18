@@ -20,7 +20,13 @@
 // ─────────────────────────── config ───────────────────────────
 const CONFIG = {
   // Git segment
-  alwaysShowZeros: true,   // posh-git style: always print +0 ~0 -0
+  // How zero counts are handled in the git segment.
+  //   'section' — drop a side that has no changes at all, and keep the full
+  //               +n ~n -n on a side that has any. A clean tree shows just ✔,
+  //               staged-only shows one green group, a mixed tree shows both.
+  //   'always'  — posh-git's strict form: both sides every time, zeros and all.
+  //   'never'   — drop every zero individually.
+  showZeros:       'section',
   showStash:       true,   // $n stash count (read from reflog, costs no process)
 
   // Model segment
@@ -344,10 +350,14 @@ function renderGit(s) {
     else { track = ` ${G.even}`; color = C.cyan; }
   }
 
-  const counts = g =>
-    ((CONFIG.alwaysShowZeros || g.a ? `+${g.a} ` : '') +
-     (CONFIG.alwaysShowZeros || g.m ? `~${g.m} ` : '') +
-     (CONFIG.alwaysShowZeros || g.d ? `-${g.d} ` : '')).trim();
+  const counts = g => {
+    const any = g.a || g.m || g.d;
+    if (CONFIG.showZeros === 'section' && !any) return '';   // side is untouched
+    const pad = CONFIG.showZeros !== 'never';
+    return ((pad || g.a ? `+${g.a} ` : '') +
+            (pad || g.m ? `~${g.m} ` : '') +
+            (pad || g.d ? `-${g.d} ` : '')).trim();
+  };
 
   const idx = counts(s.idx), wt = counts(s.wt);
   const parts = [paint(`${name}${track}`, color)];
