@@ -22,8 +22,8 @@ const CONFIG = {
   // Git segment
   // How zero counts are handled in the git segment.
   //   'section' — drop a side that has no changes at all, and keep the full
-  //               +n ~n -n on a side that has any. A clean tree shows just ✔,
-  //               staged-only shows one green group, a mixed tree shows both.
+  //               +n ~n -n on a side that has any. A clean tree shows just the
+  //               branch, staged-only shows one green group, a mixed tree both.
   //   'always'  — posh-git's strict form: both sides every time, zeros and all.
   //   'never'   — drop every zero individually.
   showZeros:       'section',
@@ -134,9 +134,9 @@ const UNI = GLYPH === 'unicode';
 
 const G = UNI
   ? { full: '█', empty: '░', even: '≡', ahead: '↑', behind: '↓',
-      detached: '➦', clean: '✔', gone: '×', dir: '📁 ', effort: '⚡', think: '💡', fast: '🚀' }
+      detached: '➦', gone: '×', dir: '📁 ', effort: '⚡', think: '💡', fast: '🚀' }
   : { full: '#', empty: '.', even: '=', ahead: '^', behind: 'v',
-      detached: '@', clean: 'ok', gone: 'x', dir: '', effort: '*', think: '~', fast: '>' };
+      detached: '@', gone: 'x', dir: '', effort: '*', think: '~', fast: '>' };
 
 // ─────────────────────────── color ───────────────────────────
 const RESET = COLOR === 'none' ? '' : '\x1b[0m';
@@ -365,7 +365,6 @@ function renderGit(s) {
   if (idx && wt) parts.push(paint('|', C.gray));
   if (wt) parts.push(paint(wt, C.red));
   if (s.conflict) parts.push(paint(`!${s.conflict}`, C.magenta));
-  if (!idx && !wt && !s.conflict) parts.push(paint(G.clean, C.green));
   if (s.stash) parts.push(paint(`$${s.stash}`, C.gray));
 
   return `${paint('[', C.yellow)}${parts.join(' ')}${paint(']', C.yellow)}`;

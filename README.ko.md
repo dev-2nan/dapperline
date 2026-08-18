@@ -99,7 +99,6 @@ git clone https://github.com/dev-2nan/dapperline.git ~/.dapperline
 | `+` `~` `-` | 신규 / 수정 / 삭제 |
 | `!n` | 충돌 파일 수 |
 | `$n` | stash 개수 |
-| `✔` | 깨끗함 |
 
 `|` 왼쪽이 **staged(초록)**, 오른쪽이 **작업 트리(빨강)** 입니다. untracked 파일은 작업 트리의 신규(`+`)로 잡힙니다.
 
@@ -107,7 +106,7 @@ git clone https://github.com/dev-2nan/dapperline.git ~/.dapperline
 
 | 상태 | 표시 |
 |---|---|
-| 깨끗 | `[main ≡ ✔]` |
+| 깨끗 | `[main ≡]` |
 | staged만 | `[main ≡ +0 ~1 -0]` — 초록 |
 | 작업 트리만 | `[main ≡ +0 ~1 -0]` — 빨강 |
 | 둘 다 | `[main ≡ +1 ~0 -0 \| +0 ~1 -0]` |
@@ -179,7 +178,7 @@ git 저장소가 아닌 곳에서는 대괄호 구역이 통째로 사라집니�
 
 | 옵션 | 기본값 | 설명 |
 |---|---|---|
-| `showZeros` | `'section'` | `'section'`은 변화 없는 쪽을 통째로 숨기고, 변화 있는 쪽은 세 항목을 다 표시. `'always'`는 posh-git 원형으로 양쪽 항상 표시. `'never'`는 0을 전부 생략 |
+| `showZeros` | `'section'` | `'section'`은 변화 없는 쪽을 통째로 숨기고, 변화 있는 쪽은 세 항목을 다 표시. 깨끗하면 브랜치만 남음. `'always'`는 posh-git 원형으로 양쪽 항상 표시. `'never'`는 0을 전부 생략 |
 | `showStash` | `true` | `$n` stash 개수 |
 | `shortenModel` | `true` | 모델명 끝 괄호 제거: `Opus 5 (1M context)` → `Opus 5` |
 | `showEffort` | `true` | `⚡xhigh` 추론 강도 |

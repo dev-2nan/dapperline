@@ -99,7 +99,6 @@ The status line appears on the next update — a new assistant message, a `/comp
 | `+` `~` `-` | Added, modified, deleted |
 | `!n` | Conflicted files |
 | `$n` | Stash entries |
-| `✔` | Clean |
 
 Left of the `|` is the index (green), right of it is the working tree (red); untracked files count as working-tree adds.
 
@@ -107,7 +106,7 @@ A side with nothing on it is dropped entirely, so the segment stays short in the
 
 | Working state | Segment |
 |---|---|
-| Clean | `[main ≡ ✔]` |
+| Clean | `[main ≡]` |
 | Staged only | `[main ≡ +0 ~1 -0]` — green |
 | Working tree only | `[main ≡ +0 ~1 -0]` — red |
 | Both | `[main ≡ +1 ~0 -0 \| +0 ~1 -0]` |
@@ -177,7 +176,7 @@ Everything lives in the `CONFIG` block at the top of `dapperline.js`.
 
 | Option | Default | Effect |
 |---|---|---|
-| `showZeros` | `'section'` | `'section'` drops a side with no changes and keeps the full triplet on a side with any. `'always'` is posh-git's strict form, both sides every time. `'never'` drops every zero |
+| `showZeros` | `'section'` | `'section'` drops a side with no changes and keeps the full triplet on a side with any, so a clean tree is just the branch. `'always'` is posh-git's strict form, both sides every time. `'never'` drops every zero |
 | `showStash` | `true` | `$n` stash count |
 | `shortenModel` | `true` | Drop a trailing parenthetical: `Opus 5 (1M context)` → `Opus 5` |
 | `showEffort` | `true` | `⚡xhigh` reasoning effort |
