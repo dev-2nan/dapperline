@@ -2,7 +2,7 @@
 /**
  * dapperline — a posh-git style status line for Claude Code.
  *
- *   [Opus 5] ⚡xhigh 💡 📁 repo [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
+ *   [Opus 5] ⚡xhigh 💡 📁 repo [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 ! $3]
  *   🧠 Context  █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M
  *   ⏳ 5h quota ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)
  *   📅 7d quota ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)

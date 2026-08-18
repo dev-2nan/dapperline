@@ -84,8 +84,9 @@ The status line appears on the next update — a new assistant message, a `/comp
 ### Git segment
 
 ```
-[main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
- │     │  └─ staged ─┘   └ unstaged ┘ │  └ stash
+[main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 ! $3]
+ │     │  └─ staged ─┘   └ unstaged ┘ │  │  └ stash
+ │     │                              │  └ working-dir status
  │     └─ upstream                    └─ conflicts
  └─ branch
 ```
@@ -120,13 +121,13 @@ The branch name is colored by its relationship to the upstream: cyan even, green
 
 ### Usage segment
 
-Each metric gets its own bar row, prefixed by an icon and a name so the rows stay apart by shape as well as by color:
+Each metric gets its own bar row — see the banner at the top — prefixed by an icon and a name so the rows stay apart by shape as well as by color:
 
-```
-🧠 Context  █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M          this conversation's context window
-⏳ 5h quota ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)    your account's 5-hour rate limit
-📅 7d quota ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)    your account's 7-day rate limit
-```
+| Row | What it measures | Trailing detail |
+|---|---|---|
+| 🧠 `Context` | This conversation's context window | Tokens used out of the window, `311k/1M` |
+| ⏳ `5h quota` | Your account's 5-hour rate limit | Time until it resets, `(reset 9h24m)` |
+| 📅 `7d quota` | Your account's 7-day rate limit | Time until it resets, `(reset 2d23h)` |
 
 The labels lead with what distinguishes them — `5h` and `7d` land at the start of the row rather than trailing a shared word, which is what you scan down a stacked list.
 
@@ -136,11 +137,7 @@ The context bar bands at 70/90%, the quota bars at 50/80%, so the same fill can 
 
 Rate limits appear for Claude.ai Pro/Max subscribers after the first API response. When they are absent the quota rows disappear and the context bar drops its label, collapsing to a single line. Any additional window Claude Code adds later gets its own row automatically, and the labels re-pad to fit.
 
-Set `rateLayout: 'inline'` for the compact one-line form instead:
-
-```
-██░░░░░░░░ 22% 217k/1M | 5h 14% | 7d 61%
-```
+Set `rateLayout: 'inline'` for the compact form instead, where the quotas trail the context bar on one line as `| 5h 14% | 7d 61%` rather than taking rows of their own.
 
 ### How the bar fills
 
