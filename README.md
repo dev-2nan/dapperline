@@ -1,5 +1,7 @@
 # dapperline
 
+**English** · [한국어](README.ko.md)
+
 A [posh-git](https://github.com/dahlbyk/posh-git) style status line for [Claude Code](https://code.claude.com) — full git status in the format PowerShell users already know, plus context window and rate-limit usage.
 
 ```
@@ -110,6 +112,12 @@ Set `rateLayout: 'inline'` for the compact one-line form instead:
 ██░░░░░░░░ 22% 217k/1M | 5h 14% | 7d 61%
 ```
 
+### How the bar fills
+
+At the default width of 30 cells, **one cell is 3.33%**. Because the percentage is floored to an integer, a cell actually lands every 3 or 4 points, repeating 4-3-3. Ten percent is exactly three cells, which puts every threshold on a cell boundary — context 70% is cell 21 and 90% is cell 27; quota 50% is cell 15 and 80% is cell 24.
+
+Setting `barWidth` to 20 (5%), 25 (4%), or 50 (2%) makes the steps even, at the cost of thresholds landing mid-cell.
+
 ### `barColor: 'threshold'`
 
 The alternative mode tints each cell by the percentage *it* represents rather than by the current value, so the bands sit at fixed positions and the thresholds are visible as color changes along the bar:
@@ -177,6 +185,20 @@ Set `debugDump` to a file path to capture the raw JSON Claude Code sends, which 
 macOS Terminal.app reports `xterm-256color` and genuinely has no 24-bit support, so it lands on the flat-color bar rather than the gradient. Windows Terminal does not set `COLORTERM`, hence the `WT_SESSION` check.
 
 `glyphs: 'auto'` uses Unicode everywhere except `TERM=dumb` and the Linux console. ASCII mode replaces the blocks and arrows with `#`, `.`, `=`, `^`, `v` and drops emoji — useful when emoji width is inconsistent enough to misalign the line.
+
+## Installing on another machine
+
+```bash
+git clone https://github.com/dev-2nan/dapperline.git ~/.dapperline
+```
+
+Add the `statusLine` block to `~/.claude/settings.json` and you are done. The path uses `~`, so **the same settings file works on every machine**. To update:
+
+```bash
+cd ~/.dapperline && git pull
+```
+
+No settings change needed.
 
 ## Testing
 
