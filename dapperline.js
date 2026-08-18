@@ -237,7 +237,7 @@ function renderBar(pct, t, id) {
   for (let i = 0; i < w; i++) {
     const cellPct = ((i + 0.5) / w) * 100;   // the value this cell stands for
     const rgb = cellColor(cellPct, t, id, pct);
-    out += i < filled ? fg(rgb) + full : fg(dim(rgb, 0.22)) + empty;
+    out += i < filled ? fg(rgb) + full : fg(dim(rgb, 0.40)) + empty;
   }
   return out + RESET;
 }

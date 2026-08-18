@@ -4,12 +4,7 @@
 
 A [posh-git](https://github.com/dahlbyk/posh-git) style status line for [Claude Code](https://code.claude.com) — full git status in the format PowerShell users already know, plus context window and rate-limit usage.
 
-```
-[Opus 5] ⚡xhigh 💡 📁 dapperline [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
-🧠 Context  █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M
-⏳ 5h quota ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)
-📅 7d quota ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)
-```
+![dapperline](assets/statusline.png)
 
 - **Real posh-git formatting** — upstream tracking arrows, staged `|` unstaged counts, conflicts, stash. Not just a branch name.
 - **Each quota row has its own hue and icon**, so stacked bars never blur together — while the percentage still carries the threshold color, and a bar in the danger band turns red anyway.
@@ -140,7 +135,7 @@ Setting `barWidth` to 20 (5%), 25 (4%), or 50 (2%) makes the steps even, at the 
 
 ### Bar glyphs
 
-`█` and `░` come from different parts of the Unicode block range, and some fonts draw them at different heights — the empty half of the bar then looks like it floats above the filled half. **GitHub's monospace font does this**, so the example blocks above may look misaligned here even though a terminal renders them correctly. If your terminal's font has the same problem, switch `barStyle`:
+`█` and `░` come from different parts of the Unicode block range, and some fonts draw them at different heights — the empty half of the bar then looks like it floats above the filled half. **GitHub's monospace font does this**, which is why the banner above is a screenshot — the text examples further down may look misaligned here even though a terminal renders them correctly. If your terminal's font has the same problem, switch `barStyle`:
 
 | Style | Glyphs | Note |
 |---|---|---|
