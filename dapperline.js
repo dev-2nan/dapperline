@@ -3,9 +3,9 @@
  * dapperline — a posh-git style status line for Claude Code.
  *
  *   [Opus 5] ⚡xhigh 💡 📁 repo [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
- *   🧠 Context  ━━━━━━━━━───────────────────── 31% 311k/1M
- *   ⏳ 5h quota ━━━━────────────────────────── 14% (reset 9h24m)
- *   📅 7d quota ━━━━━━━━━━━━━━━━━━──────────── 61% (reset 2d23h)
+ *   🧠 Context  █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M
+ *   ⏳ 5h quota ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)
+ *   📅 7d quota ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)
  *
  * Line 1   model · reasoning effort · directory · git status (posh-git format)
  * Line 2+  one bar row per usage metric
@@ -36,13 +36,13 @@ const CONFIG = {
   rowIcons:        true,   // 🧠/⏳/📅 prefix on each usage row
   rowLabels:       true,   // spell the row out: "Context", "5h quota", "7d quota"
 
-  // Bar glyphs. 'block' is █/░, which some fonts draw at different heights —
-  // the empty half then sits visibly higher than the filled half. 'line' uses
-  // ━/─, both centered on the same axis, so they can never drift. 'solid'
-  // paints every cell █ and separates filled from empty by brightness alone,
-  // which needs 24-bit color. 'auto' picks solid when truecolor is available
-  // and block otherwise.
-  barStyle:        'auto',
+  // Bar glyphs. 'block' is █/░ and is the default. Some fonts draw those two
+  // at different heights, which makes the empty half look like it floats above
+  // the filled half — GitHub's monospace font does exactly that. If your
+  // terminal's font does too, switch to 'line' (━/─, both centered on the same
+  // axis) or 'solid' (█ throughout, fill marked by brightness, needs 24-bit
+  // color).
+  barStyle:        'block',
 
   // 'lines' gives every rate-limit window its own bar line, aligned under the
   // context bar. 'inline' appends them to the context line as "| 5h 14%".
@@ -211,7 +211,7 @@ function cellColor(cellPct, t, id, pct) {
 function barGlyphs() {
   let style = CONFIG.barStyle;
   if (!UNI) return { full: G.full, empty: G.empty };            // ASCII: # and .
-  if (style === 'auto') style = COLOR === 'truecolor' ? 'solid' : 'block';
+  if (style === 'auto') style = COLOR === 'truecolor' ? 'solid' : 'block';   // legacy value
   if (style === 'solid' && COLOR !== 'truecolor') style = 'block';
   if (style === 'line') return { full: '━', empty: '─' };
   if (style === 'solid') return { full: '█', empty: '█' };

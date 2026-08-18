@@ -6,9 +6,9 @@ A [posh-git](https://github.com/dahlbyk/posh-git) style status line for [Claude 
 
 ```
 [Opus 5] ⚡xhigh 💡 📁 dapperline [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
-🧠 Context  ━━━━━━━━━───────────────────── 31% 311k/1M
-⏳ 5h quota ━━━━────────────────────────── 14% (reset 9h24m)
-📅 7d quota ━━━━━━━━━━━━━━━━━━──────────── 61% (reset 2d23h)
+🧠 Context  █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M
+⏳ 5h quota ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)
+📅 7d quota ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)
 ```
 
 - **Real posh-git formatting** — upstream tracking arrows, staged `|` unstaged counts, conflicts, stash. Not just a branch name.
@@ -113,9 +113,9 @@ Left of the `|` is the index (green), right of it is the working tree (red); unt
 Each metric gets its own bar row, prefixed by an icon and a name so the rows stay apart by shape as well as by color:
 
 ```
-🧠 Context  ━━━━━━━━━───────────────────── 31% 311k/1M          this conversation's context window
-⏳ 5h quota ━━━━────────────────────────── 14% (reset 9h24m)    your account's 5-hour rate limit
-📅 7d quota ━━━━━━━━━━━━━━━━━━──────────── 61% (reset 2d23h)    your account's 7-day rate limit
+🧠 Context  █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M          this conversation's context window
+⏳ 5h quota ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)    your account's 5-hour rate limit
+📅 7d quota ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)    your account's 7-day rate limit
 ```
 
 The labels lead with what distinguishes them — `5h` and `7d` land at the start of the row rather than trailing a shared word, which is what you scan down a stacked list.
@@ -129,7 +129,7 @@ Rate limits appear for Claude.ai Pro/Max subscribers after the first API respons
 Set `rateLayout: 'inline'` for the compact one-line form instead:
 
 ```
-━━──────── 22% 217k/1M | 5h 14% | 7d 61%
+██░░░░░░░░ 22% 217k/1M | 5h 14% | 7d 61%
 ```
 
 ### How the bar fills
@@ -140,7 +140,7 @@ Setting `barWidth` to 20 (5%), 25 (4%), or 50 (2%) makes the steps even, at the 
 
 ### Bar glyphs
 
-`█` and `░` come from different parts of the Unicode block range, and some fonts draw them at different heights — the empty half of the bar then looks like it sits above the filled half. If that happens, switch `barStyle`:
+`█` and `░` come from different parts of the Unicode block range, and some fonts draw them at different heights — the empty half of the bar then looks like it floats above the filled half. **GitHub's monospace font does this**, so the example blocks above may look misaligned here even though a terminal renders them correctly. If your terminal's font has the same problem, switch `barStyle`:
 
 | Style | Glyphs | Note |
 |---|---|---|
@@ -148,7 +148,7 @@ Setting `barWidth` to 20 (5%), 25 (4%), or 50 (2%) makes the steps even, at the 
 | `line` | `━` `─` | Both centered on the same axis. Works in every color mode |
 | `block` | `█` `░` | The classic look, and the one prone to the drift above |
 
-`auto` uses `solid` when the terminal reports truecolor and `block` otherwise.
+`block` is the default. `auto` is kept as an alias that picks `solid` on truecolor and `block` otherwise.
 
 ### `barColor: 'threshold'`
 
@@ -176,7 +176,7 @@ Everything lives in the `CONFIG` block at the top of `dapperline.js`.
 | `showThinking` | `true` | `💡` when extended thinking is on |
 | `showFastMode` | `true` | `🚀` when fast mode is on |
 | `barWidth` | `30` | Cells per usage bar |
-| `barStyle` | `'auto'` | Bar glyphs. `'block'` is █/░, `'line'` is ━/─, `'solid'` is █ throughout with brightness alone marking the fill. `'auto'` picks solid on truecolor, block otherwise |
+| `barStyle` | `'block'` | Bar glyphs. `'block'` is █/░, `'line'` is ━/─, `'solid'` is █ throughout with brightness alone marking the fill. `'auto'` picks solid on truecolor, block otherwise |
 | `showTokens` | `true` | Token counts next to the context percentage |
 | `rateLayout` | `'lines'` | One bar row per quota. `'inline'` appends them to the context line |
 | `rowIcons` | `true` | 🧠/⏳/📅 row prefixes |
