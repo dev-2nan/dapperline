@@ -4,9 +4,9 @@ A [posh-git](https://github.com/dahlbyk/posh-git) style status line for [Claude 
 
 ```
 [Opus 5] ⚡xhigh 💡 📁 dapperline [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
-🧠 █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M
-⏳ ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)
-📅 ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)
+🧠 Context  █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M
+⏳ 5h quota ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)
+📅 7d quota ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)
 ```
 
 - **Real posh-git formatting** — upstream tracking arrows, staged `|` unstaged counts, conflicts, stash. Not just a branch name.
@@ -88,13 +88,15 @@ Left of the `|` is the index (green), right of it is the working tree (red); unt
 
 ### Usage segment
 
-Each quota gets its own bar row, prefixed by an icon so the rows stay apart by shape:
+Each metric gets its own bar row, prefixed by an icon and a name so the rows stay apart by shape as well as by color:
 
 ```
-🧠 █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M     context window, and the tokens behind it
-⏳ ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)   5-hour rate limit
-📅 ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)   7-day rate limit
+🧠 Context  █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M          this conversation's context window
+⏳ 5h quota ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)    your account's 5-hour rate limit
+📅 7d quota ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)    your account's 7-day rate limit
 ```
+
+The labels lead with what distinguishes them — `5h` and `7d` land at the start of the row rather than trailing a shared word, which is what you scan down a stacked list.
 
 Each row's bar carries its own hue — teal, violet, amber — ramping light to deep as it fills, so three rows sitting in the same threshold band are still telling apart. The **percentage** carries the threshold color instead, and a bar whose value reaches the danger band overrides to red: at that point the alarm matters more than the separation.
 
@@ -136,7 +138,8 @@ Everything lives in the `CONFIG` block at the top of `dapperline.js`.
 | `barWidth` | `30` | Cells per usage bar |
 | `showTokens` | `true` | Token counts next to the context percentage |
 | `rateLayout` | `'lines'` | One bar row per quota. `'inline'` appends them to the context line |
-| `rowIcons` | `true` | 🧠/⏳/📅 row prefixes instead of `ctx`/`5h`/`7d` text |
+| `rowIcons` | `true` | 🧠/⏳/📅 row prefixes |
+| `rowLabels` | `true` | Spell each row out: `Context`, `5h quota`, `7d quota` |
 | `barColor` | `'identity'` | Per-row hue, red in the danger band. `'threshold'` colors the whole bar by band |
 | `showReset` | `true` | Time until each rate-limit window resets (`(reset 9h24m)`) |
 | `showCost` | `false` | Session cost in USD |

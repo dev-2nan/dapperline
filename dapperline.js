@@ -3,15 +3,15 @@
  * dapperline — a posh-git style status line for Claude Code.
  *
  *   [Opus 5] ⚡xhigh 💡 📁 repo [main ↑1 +1 ~1 -1 | +1 ~1 -1 !2 $3]
- *   ██████░░░░ 22% 217k/1M | 5h 8% | 7d 58%
+ *   🧠 Context  █████████░░░░░░░░░░░░░░░░░░░░░ 31% 311k/1M
+ *   ⏳ 5h quota ████░░░░░░░░░░░░░░░░░░░░░░░░░░ 14% (reset 9h24m)
+ *   📅 7d quota ██████████████████░░░░░░░░░░░░ 61% (reset 2d23h)
  *
- * Line 1  model · reasoning effort · directory · git status (posh-git format)
- * Line 2  context window and rate-limit usage, colored by threshold
+ * Line 1   model · reasoning effort · directory · git status (posh-git format)
+ * Line 2+  one bar row per usage metric
  *
- * The usage bars are gradient-filled along the *threshold* axis, so the point
- * where the color changes is the warning or danger line itself. Unfilled cells
- * keep a dimmed version of their band color, which means the thresholds stay
- * visible even before you reach them.
+ * Each row carries its own hue so stacked bars stay distinct; the percentage
+ * carries the threshold color, and a bar in the danger band overrides to red.
  *
  * Reads Claude Code's status line JSON on stdin, writes rendered lines to
  * stdout. See https://code.claude.com/docs/en/statusline
@@ -33,7 +33,8 @@ const CONFIG = {
   barWidth:        30,     // cells per usage bar
   showTokens:      true,   // token counts next to the context percentage (217k/1M)
   showReset:       true,   // time until each rate-limit window resets
-  rowIcons:        true,   // 🧠/⏳/📅 per row instead of ctx/5h/7d labels
+  rowIcons:        true,   // 🧠/⏳/📅 prefix on each usage row
+  rowLabels:       true,   // spell the row out: "Context", "5h quota", "7d quota"
 
   // 'lines' gives every rate-limit window its own bar line, aligned under the
   // context bar. 'inline' appends them to the context line as "| 5h 14%".
@@ -365,8 +366,19 @@ const CTX_LABEL = 'ctx';
 // Row prefixes. Icons separate the rows by shape, so the rows stay
 // distinguishable even when all three sit in the same threshold band and
 // therefore share a color. Falls back to the text labels without them.
-const ICON = { ctx: '🧠', five_hour: '⏳', seven_day: '📅' };
+const ICON = { ctx: '🧠', five_hour: '⏳', seven_day: '📅', _default: '📊' };
+// The distinguishing token leads, so a vertical stack is scannable down the
+// left edge — "5h quota" reads faster than "Usage 5H" when three rows align.
+const ROW_LABEL = { ctx: 'Context', five_hour: '5h quota', seven_day: '7d quota' };
 const useIcons = () => CONFIG.rowIcons && UNI;
+
+/** icon + spelled-out label, whichever of the two are enabled. */
+function rowPrefix(key, fallback) {
+  const parts = [];
+  if (useIcons()) parts.push(ICON[key] || ICON._default);
+  if (CONFIG.rowLabels) parts.push(ROW_LABEL[key] || fallback);
+  return parts.length ? parts : [fallback];   // neither enabled: short label
+}
 
 // Codepoints with Emoji_Presentation, which terminals render two columns wide.
 // padEnd counts them as one, so padding has to consult this instead.
@@ -406,8 +418,7 @@ function rateEntries(rl) {
     if (p == null) return null;
     const label = RATE_LABEL[k] ||
       k.replace(/^five_hour/, '5h').replace(/^seven_day/, '7d').replace(/_/g, ' ').trim();
-    // An unknown window has no icon, so it keeps its text label as the prefix.
-    const prefix = (useIcons() && ICON[k]) || label;
+    const prefix = rowPrefix(k, label).join(' ');
     return { key: k, label, prefix, pct: Math.round(p), reset: until(w.resets_at) };
   }).filter(Boolean);
 }
@@ -450,7 +461,7 @@ function render(d) {
 
   const rates = rateEntries(d.rate_limits);
   const stacked = CONFIG.rateLayout === 'lines' && rates.length > 0;
-  const ctxPrefix = (useIcons() && ICON.ctx) || CTX_LABEL;
+  const ctxPrefix = rowPrefix('ctx', CTX_LABEL).join(' ');
   // Line up the bars by padding every prefix to the widest one.
   const prefixW = stacked
     ? Math.max(dispWidth(ctxPrefix), ...rates.map(r => dispWidth(r.prefix)))
