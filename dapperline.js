@@ -503,6 +503,9 @@ if (require.main === module) {
   process.stdin.on('data', c => (input += c));
   process.stdin.on('end', () => {
     if (CONFIG.debugDump) { try { fs.writeFileSync(CONFIG.debugDump, input); } catch {} }
-    for (const line of render(JSON.parse(input))) console.log(line);
+    // Windows PowerShell prepends a BOM when piping to a native command, and
+    // JSON.parse rejects it. Cheap to tolerate, impossible to debug from the
+    // blank status line it would otherwise produce.
+    for (const line of render(JSON.parse(input.replace(/^﻿/, '')))) console.log(line);
   });
 }

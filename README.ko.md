@@ -22,11 +22,28 @@
 
 Node.js 18 이상과 git이 필요합니다.
 
+**macOS / Linux**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dev-2nan/dapperline/main/install.sh | bash
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/dev-2nan/dapperline/main/install.ps1 | iex
+```
+
+설치 스크립트가 `~/.dapperline`에 클론하고, `~/.claude/settings.json`에 `statusLine`을 추가한 뒤(파일은 먼저 백업하고 다른 키는 건드리지 않습니다), 한 번 렌더링해서 실제로 동작하는지까지 확인합니다. 다시 실행하면 그 자리에서 업데이트됩니다. 다른 위치에 넣으려면 `DAPPERLINE_DIR`을 지정하세요.
+
+<details>
+<summary>직접 설치하기</summary>
+
 ```bash
 git clone https://github.com/dev-2nan/dapperline.git ~/.dapperline
 ```
 
-`~/.claude/settings.json`에서 Claude Code가 이 스크립트를 보게 합니다.
+`~/.claude/settings.json`에 이걸 추가합니다.
 
 ```json
 {
@@ -36,6 +53,9 @@ git clone https://github.com/dev-2nan/dapperline.git ~/.dapperline
   }
 }
 ```
+
+이미 클론한 디렉토리에서 `install.sh`를 실행하면 새로 클론하지 않고 **그 클론을 그대로** 연결합니다.
+</details>
 
 <details>
 <summary>Windows</summary>
@@ -190,17 +210,13 @@ limits: {
 
 ## 다른 PC에 설치하기
 
-```bash
-git clone https://github.com/dev-2nan/dapperline.git ~/.dapperline
-```
-
-`~/.claude/settings.json`에 `statusLine`을 추가하면 끝입니다. 경로에 `~`를 쓰기 때문에 **설정 내용이 모든 머신에서 동일**합니다. 업데이트는 이렇게 합니다.
+[설치](#설치)의 한 줄짜리 명령을 그대로 실행하면 됩니다. 스크립트가 써넣는 경로는 `~`를 쓰기 때문에 **settings.json 내용이 모든 머신에서 동일**합니다. 업데이트는 이렇게 합니다.
 
 ```bash
 cd ~/.dapperline && git pull
 ```
 
-설정은 다시 건드릴 필요 없습니다.
+설정은 다시 건드릴 필요 없습니다. 설치 스크립트를 다시 실행해도 되는데, 그러면 pull과 재연결을 한 번에 합니다.
 
 ## 테스트
 

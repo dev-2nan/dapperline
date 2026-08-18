@@ -22,11 +22,28 @@ A [posh-git](https://github.com/dahlbyk/posh-git) style status line for [Claude 
 
 Requires Node.js 18+ and git.
 
+**macOS / Linux**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dev-2nan/dapperline/main/install.sh | bash
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/dev-2nan/dapperline/main/install.ps1 | iex
+```
+
+The installer clones to `~/.dapperline`, adds `statusLine` to `~/.claude/settings.json` — backing the file up and leaving every other key alone — then renders once to prove it works. Re-running it updates in place. Set `DAPPERLINE_DIR` to install elsewhere.
+
+<details>
+<summary>Or install by hand</summary>
+
 ```bash
 git clone https://github.com/dev-2nan/dapperline.git ~/.dapperline
 ```
 
-Point Claude Code at it in `~/.claude/settings.json`:
+Add this to `~/.claude/settings.json`:
 
 ```json
 {
@@ -36,6 +53,9 @@ Point Claude Code at it in `~/.claude/settings.json`:
   }
 }
 ```
+
+Running `~/.dapperline/install.sh` from a checkout wires up that checkout rather than cloning a second one.
+</details>
 
 <details>
 <summary>Windows</summary>
@@ -188,17 +208,13 @@ macOS Terminal.app reports `xterm-256color` and genuinely has no 24-bit support,
 
 ## Installing on another machine
 
-```bash
-git clone https://github.com/dev-2nan/dapperline.git ~/.dapperline
-```
-
-Add the `statusLine` block to `~/.claude/settings.json` and you are done. The path uses `~`, so **the same settings file works on every machine**. To update:
+Run the same one-liner from [Install](#install). The command it writes uses `~`, so **the same settings.json works on every machine**. To update:
 
 ```bash
 cd ~/.dapperline && git pull
 ```
 
-No settings change needed.
+No settings change needed — or re-run the installer, which pulls and re-points in one step.
 
 ## Testing
 
