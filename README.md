@@ -44,12 +44,15 @@ Add this to `~/.claude/settings.json`:
 {
   "statusLine": {
     "type": "command",
-    "command": "node ~/.dapperline/dapperline.js"
+    "command": "node ~/.dapperline/dapperline.js",
+    "refreshInterval": 10
   }
 }
 ```
 
 Running `~/.dapperline/install.sh` from a checkout wires up that checkout rather than cloning a second one.
+
+`refreshInterval` is worth setting rather than optional — see [Why the quota rows show up late](#why-the-quota-rows-show-up-late).
 </details>
 
 <details>
@@ -235,6 +238,16 @@ cd ~/.dapperline && git pull
 ```
 
 No settings change needed — or re-run the installer, which pulls and re-points in one step.
+
+## Why the quota rows show up late
+
+Open a new session and only the context bar appears; the 5h and 7d rows arrive a moment later. Two things cause that, and neither is a bug.
+
+`rate_limits` is absent from the payload until the first API response of the session, so there is genuinely nothing to draw at first. And the status line only re-runs on specific events — a new assistant message, `/compact`, a permission-mode change, a vim-mode toggle. Nothing schedules a re-run just because data arrived, so the stale render can sit there until you happen to trigger one.
+
+`refreshInterval: 10` fixes both: the quota rows fill in within ten seconds, and the `(reset ...)` countdowns stay honest instead of freezing at whatever they read when the session last re-rendered. One render costs about 200ms of a single git process and a Node start, so a ten-second timer is not a load worth worrying about.
+
+While the quota rows are absent the context bar drops its icon and label and collapses to one line — with a single row there is nothing to align it against.
 
 ## Testing
 

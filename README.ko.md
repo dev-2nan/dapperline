@@ -44,12 +44,15 @@ git clone https://github.com/dev-2nan/dapperline.git ~/.dapperline
 {
   "statusLine": {
     "type": "command",
-    "command": "node ~/.dapperline/dapperline.js"
+    "command": "node ~/.dapperline/dapperline.js",
+    "refreshInterval": 10
   }
 }
 ```
 
 이미 클론한 디렉토리에서 `install.sh`를 실행하면 새로 클론하지 않고 **그 클론을 그대로** 연결합니다.
+
+`refreshInterval`은 선택이 아니라 넣는 게 좋습니다 — [쿼타 줄이 늦게 나타나는 이유](#쿼타-줄이-늦게-나타나는-이유) 참고.
 </details>
 
 <details>
@@ -237,6 +240,16 @@ cd ~/.dapperline && git pull
 ```
 
 설정은 다시 건드릴 필요 없습니다. 설치 스크립트를 다시 실행해도 되는데, 그러면 pull과 재연결을 한 번에 합니다.
+
+## 쿼타 줄이 늦게 나타나는 이유
+
+새 세션을 열면 컨텍스트 바만 보이고 5h·7d 줄은 잠시 뒤에 나타납니다. 원인이 둘인데 어느 쪽도 버그가 아닙니다.
+
+`rate_limits`는 **세션의 첫 API 응답 전까지 페이로드에 아예 없습니다.** 그릴 데이터 자체가 없는 거죠. 게다가 statusline은 정해진 이벤트에만 다시 실행됩니다 — 어시스턴트 메시지 도착, `/compact`, 권한 모드 변경, vim 모드 전환. **데이터가 도착했다는 이유만으로는 재실행되지 않습니다.** 그래서 우연히 그 이벤트를 건드릴 때까지 옛날 화면이 그대로 남습니다.
+
+`refreshInterval: 10`이 둘 다 해결합니다. 쿼타 줄이 10초 안에 채워지고, `(reset ...)` 카운트다운도 마지막 렌더링 시점에 멈춰 있지 않고 계속 갱신됩니다. 렌더링 1회가 git 프로세스 하나와 Node 부팅으로 약 200ms라, 10초 간격은 부담이 되지 않습니다.
+
+쿼타 줄이 없는 동안에는 컨텍스트 바가 아이콘과 라벨을 떼고 한 줄로 접힙니다 — 줄이 하나뿐이면 맞출 상대가 없어서입니다.
 
 ## 테스트
 

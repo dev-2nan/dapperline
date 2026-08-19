@@ -57,11 +57,16 @@ if (fs.existsSync(settingsPath)) {
 }
 
 const previous = settings.statusLine?.command;
-settings.statusLine = { type: 'command', command: `node ${rel}` };
+// refreshInterval matters here rather than being a nicety: rate_limits is
+// absent until the first API response of a session, and the event-driven
+// triggers alone would leave the quota rows missing until something else
+// happened to re-run the script. It also keeps the (reset ...) countdowns
+// from freezing while the session sits idle.
+settings.statusLine = { type: 'command', command: `node ${rel}`, refreshInterval: 10 };
 fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
 
 console.log(`  settings   ${settingsPath}`);
-console.log(`  statusLine node ${rel}`);
+console.log(`  statusLine node ${rel}  (refresh every 10s)`);
 if (previous && previous !== `node ${rel}`) {
   console.log(`  replaced   ${previous}`);
 }
