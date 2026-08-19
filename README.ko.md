@@ -2,6 +2,8 @@
 
 [English](README.md) · **한국어**
 
+[![release](https://img.shields.io/github/v/release/dev-2nan/dapperline?style=flat-square&color=4a9d9c)](https://github.com/dev-2nan/dapperline/releases)
+
 [Claude Code](https://code.claude.com)용 [posh-git](https://github.com/dahlbyk/posh-git) 스타일 상태줄. PowerShell 사용자에게 익숙한 그 git 상태 포맷에, 컨텍스트 창과 사용량 한도를 얹었습니다.
 
 ![dapperline](assets/statusline.png)
@@ -266,6 +268,8 @@ node ~/.dapperline/dapperline.js --version
 ```
 
 커밋 해시를 같이 찍는 이유는, 설치가 `main`을 따라가기 때문에 태그만으로는 그 뒤로 몇 커밋 더 갔는지 알 수 없어서입니다.
+
+버전별로 무엇이 바뀌었는지는 [릴리스 페이지](https://github.com/dev-2nan/dapperline/releases)에 있습니다.
 
 임계값 구간별, 필드 누락, 비정상적인 컨텍스트 크기에 대한 픽스처를 렌더링한 뒤, 다섯 가지 터미널 환경을 흉내내어 색상·글리프 폴백을 확인합니다.
 

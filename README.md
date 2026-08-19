@@ -2,6 +2,8 @@
 
 **English** · [한국어](README.ko.md)
 
+[![release](https://img.shields.io/github/v/release/dev-2nan/dapperline?style=flat-square&color=4a9d9c)](https://github.com/dev-2nan/dapperline/releases)
+
 A [posh-git](https://github.com/dahlbyk/posh-git) style status line for [Claude Code](https://code.claude.com) — full git status in the format PowerShell users already know, plus context window and rate-limit usage.
 
 ![dapperline](assets/statusline.png)
@@ -264,6 +266,8 @@ node ~/.dapperline/dapperline.js --version
 ```
 
 The commit is included because installs track `main`, so the tag alone cannot say how far past it a checkout has drifted.
+
+What changed in each version is on the [releases page](https://github.com/dev-2nan/dapperline/releases).
 
 Renders fixtures for each threshold band, missing fields, and unusual context sizes, then re-runs the script under five simulated terminals to check the color and glyph fallbacks.
 
