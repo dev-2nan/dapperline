@@ -11,6 +11,7 @@
 const { execFileSync } = require('child_process');
 const path = require('path');
 const { render, CONFIG, COLOR, GLYPH } = require('../dapperline.js');
+const pkg = require('../package.json');
 
 const plain = process.argv.includes('--plain');
 const strip = s => s.replace(/\x1b\[[0-9;]*m/g, '');
@@ -119,6 +120,17 @@ for (const [name, vars] of ENVS) {
   }
 }
 
-const total = CASES.length + ENVS.length + 2;   // + the two rateLayout checks
+// The runtime constant and package.json both carry the version; catch drift
+// here rather than shipping a build that misreports itself.
+console.log('\n\n═══ version ═══');
+const reported = execFileSync(process.execPath, [SCRIPT, '--version'], { encoding: 'utf8' }).trim();
+if (reported.startsWith(`dapperline ${pkg.version}`)) {
+  console.log(`   ${reported}  matches package.json`);
+} else {
+  failed++;
+  console.log(`   ${reported}  DOES NOT match package.json ${pkg.version}`);
+}
+
+const total = CASES.length + ENVS.length + 3;   // + two rateLayout checks + version
 console.log(`\n${total - failed}/${total} checks rendered.`);
 process.exit(failed ? 1 : 0);

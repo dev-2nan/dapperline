@@ -1,6 +1,6 @@
 {
   "name": "dapperline",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A posh-git style status line for Claude Code, with context window and rate-limit usage.",
   "main": "dapperline.js",
   "bin": {

@@ -256,6 +256,15 @@ npm test              # ANSI stripped
 node test/render.js   # in color
 ```
 
+To check what you are running:
+
+```bash
+node ~/.dapperline/dapperline.js --version
+# dapperline 0.2.0 (4505f45)
+```
+
+The commit is included because installs track `main`, so the tag alone cannot say how far past it a checkout has drifted.
+
 Renders fixtures for each threshold band, missing fields, and unusual context sizes, then re-runs the script under five simulated terminals to check the color and glyph fallbacks.
 
 ## Notes

@@ -97,6 +97,10 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+// Source of truth for the running version. package.json carries the same
+// number for npm's benefit, and the test suite fails if the two drift.
+const VERSION = '0.2.0';
+
 // ─────────────────────── terminal capability ───────────────────────
 /**
  * Returns 'truecolor' | '256' | '16' | 'none'.
@@ -539,6 +543,19 @@ module.exports = { render, renderBar, CONFIG, COLOR, GLYPH };
 // Run as a status line command only when invoked directly, so `require()` in
 // tests does not block waiting on stdin.
 if (require.main === module) {
+  if (process.argv.includes('--version') || process.argv.includes('-v')) {
+    // The commit is worth more than the tag here: installs track main, so
+    // "0.2.0" alone cannot say how far past the tag a checkout has drifted.
+    let commit = '';
+    try {
+      commit = ' (' + execSync('git rev-parse --short HEAD', {
+        cwd: __dirname, encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true,
+      }).trim() + ')';
+    } catch {}
+    console.log(`dapperline ${VERSION}${commit}`);
+    process.exit(0);
+  }
+
   let input = '';
   // setEncoding lets Node's StringDecoder hold partial UTF-8 sequences that
   // straddle a chunk boundary; concatenating raw Buffers would corrupt
