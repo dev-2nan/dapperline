@@ -29,6 +29,16 @@ const CONFIG = {
   showZeros:       'section',
   showStash:       true,   // $n stash count (read from reflog, costs no process)
 
+  // Seconds a git result may be reused when nothing in the session changed.
+  // Claude Code re-runs the status line in every open session on each
+  // refreshInterval tick, idle ones included, and the git call is the only
+  // part of a render that costs a process. When the payload matches the
+  // previous render's — bar the fields that advance on their own — that
+  // render's git result is reused and this one spawns nothing. The
+  // clock-derived parts, the "(reset ...)" countdowns, are recomputed every
+  // time regardless, so nothing on screen freezes. 0 disables the cache.
+  idleCacheTtl:    60,
+
   // Model segment
   shortenModel:    true,   // "Opus 5 (1M context)" → "Opus 5"
   showEffort:      true,   // ⚡xhigh reasoning effort
@@ -96,10 +106,11 @@ const CONFIG = {
 const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 // Source of truth for the running version. package.json carries the same
 // number for npm's benefit, and the test suite fails if the two drift.
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 
 // ─────────────────────── terminal capability ───────────────────────
 /**
@@ -342,6 +353,58 @@ function stashCount(cwd) {
   } catch { return 0; }   // no stash
 }
 
+/**
+ * Everything on the status line that does not come from the clock. Two renders
+ * with the same fingerprint would draw the same git segment, so the second one
+ * can reuse what the first one read.
+ *
+ * Fields that advance on their own have to stay out of it. Claude Code sends
+ * cost.total_duration_ms — session wall-clock — and it moves on every single
+ * render, idle session or not; fingerprinting the payload as it arrives would
+ * therefore never match twice and the cache below would be dead code. Cost and
+ * duration are folded in only when they are actually on screen, in which case
+ * the render has to happen anyway.
+ */
+function fingerprint(d, cwd) {
+  const cw = d.context_window || {};
+  const rl = d.rate_limits || {};
+  return JSON.stringify([
+    cwd,
+    d.model?.display_name, d.effort?.level, d.thinking?.enabled, d.fast_mode,
+    cw.used_percentage, cw.total_input_tokens, cw.context_window_size,
+    Object.keys(rl).sort().map(k => [k, rl[k]?.used_percentage, rl[k]?.resets_at]),
+    CONFIG.showCost ? d.cost?.total_cost_usd : null,
+    CONFIG.showDuration ? d.cost?.total_duration_ms : null,
+  ]);
+}
+
+/**
+ * readGit, skipped when the previous render's result still stands. Keyed by
+ * session, since a session is what Claude Code re-renders on a timer, and kept
+ * in the temp directory so a read-only home or a missing ~/.claude costs the
+ * cache rather than the render.
+ */
+function readGitCached(d, cwd) {
+  const id = d.session_id;
+  if (!id || !CONFIG.idleCacheTtl) return readGit(cwd);
+
+  const safe = String(id).replace(/[^\w.-]/g, '_');
+  const file = path.join(os.tmpdir(), 'dapperline', `${safe}.json`);
+  const fp = fingerprint(d, cwd);
+
+  try {
+    const c = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (c.fp === fp && Date.now() - c.at < CONFIG.idleCacheTtl * 1000) return c.git;
+  } catch {}   // absent, unreadable, or corrupt — fall through and read git
+
+  const s = readGit(cwd);
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ fp, at: Date.now(), git: s }));
+  } catch {}   // a cache we cannot write is still a status line we can draw
+  return s;
+}
+
 function renderGit(s) {
   let name, color;
   if (s.branch === '(detached)') {
@@ -499,7 +562,7 @@ const shortModel = n => {
 /** Renders both lines. Exported so tests can feed it fixtures. */
 function render(d) {
   const cwd = d.workspace?.current_dir || d.cwd || process.cwd();
-  const g = readGit(cwd);
+  const g = readGitCached(d, cwd);
 
   const head = [paint(`[${shortModel(d.model?.display_name)}]`, C.cyan)];
   if (CONFIG.showEffort && d.effort?.level) {
@@ -548,7 +611,7 @@ module.exports = { render, renderBar, CONFIG, COLOR, GLYPH };
 if (require.main === module) {
   if (process.argv.includes('--version') || process.argv.includes('-v')) {
     // The commit is worth more than the tag here: installs track main, so
-    // "0.2.0" alone cannot say how far past the tag a checkout has drifted.
+    // "0.3.0" alone cannot say how far past the tag a checkout has drifted.
     let commit = '';
     try {
       commit = ' (' + execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
