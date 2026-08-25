@@ -10,6 +10,8 @@
 
 const { execFileSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const { render, CONFIG, COLOR, GLYPH } = require('../dapperline.js');
 const pkg = require('../package.json');
 
@@ -64,6 +66,10 @@ const CASES = [
 let failed = 0;
 console.log(`env: color=${COLOR}  glyphs=${GLYPH}`);
 
+// Fixtures share a session id, so leaving the idle cache on would let one case
+// answer for the next. It gets its own check further down instead.
+CONFIG.idleCacheTtl = 0;
+
 for (const [name, over] of CASES) {
   process.stdout.write(`\n── ${name}\n`);
   try {
@@ -101,7 +107,9 @@ const ENVS = [
 ];
 
 console.log('\n\n═══ terminal fallbacks (context 75%) ═══');
-const payload = JSON.stringify(merge(ctx(75)));
+// No session_id, so these five runs each read git for themselves rather than
+// inheriting the first one's cached result.
+const payload = JSON.stringify(merge(ctx(75), { session_id: undefined }));
 
 for (const [name, vars] of ENVS) {
   // Strip inherited signals so each case starts from a known state.
@@ -120,6 +128,41 @@ for (const [name, vars] of ENVS) {
   }
 }
 
+// ── idle cache ───────────────────────────────────────────────────────────
+// The whole point of the cache is that an unchanged session spawns nothing, so
+// check exactly that: render the same payload twice and count git processes.
+// GIT_TRACE makes each one announce itself in a file, which counts the same way
+// on every platform — no PATH shims.
+console.log('\n\n═══ idle cache ═══');
+{
+  const trace = path.join(os.tmpdir(), `dapperline-trace-${process.pid}.log`);
+  const session = `test-${process.pid}`;
+  const cached = path.join(os.tmpdir(), 'dapperline', `${session}.json`);
+  const idle = JSON.stringify(merge({ session_id: session }));
+  const env = { ...process.env, GIT_TRACE: trace };
+  const rm = f => { try { fs.unlinkSync(f); } catch {} };
+  const gitProcesses = () => {
+    try { return fs.readFileSync(trace, 'utf8').split('\n').filter(Boolean).length; }
+    catch { return 0; }
+  };
+
+  rm(cached);
+  const counts = [];
+  for (let i = 0; i < 2; i++) {
+    rm(trace);
+    execFileSync(process.execPath, [SCRIPT], { input: idle, env, encoding: 'utf8' });
+    counts.push(gitProcesses());
+  }
+  rm(trace); rm(cached);
+
+  if (counts[0] > 0 && counts[1] === 0) {
+    console.log(`   first render read git, second reused it (${counts[0]} → ${counts[1]} git trace lines)`);
+  } else {
+    failed++;
+    console.log(`   EXPECTED git on the first render and none on the second, got ${counts[0]} → ${counts[1]}`);
+  }
+}
+
 // The runtime constant and package.json both carry the version; catch drift
 // here rather than shipping a build that misreports itself.
 console.log('\n\n═══ version ═══');
@@ -131,6 +174,6 @@ if (reported.startsWith(`dapperline ${pkg.version}`)) {
   console.log(`   ${reported}  DOES NOT match package.json ${pkg.version}`);
 }
 
-const total = CASES.length + ENVS.length + 3;   // + two rateLayout checks + version
+const total = CASES.length + ENVS.length + 4;   // + two rateLayout, idle cache, version
 console.log(`\n${total - failed}/${total} checks rendered.`);
 process.exit(failed ? 1 : 0);

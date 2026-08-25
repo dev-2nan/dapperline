@@ -10,7 +10,7 @@ A [posh-git](https://github.com/dahlbyk/posh-git) style status line for [Claude 
 
 - **Real posh-git formatting** — upstream tracking arrows, staged `|` unstaged counts, conflicts, stash. Not just a branch name.
 - **Each quota row has its own hue and icon**, so stacked bars never blur together — while the percentage still carries the threshold color, and a bar in the danger band turns red anyway.
-- **One `git` process per render.** Most status lines spawn five or six.
+- **One `git` process per render, and none while a session sits idle.** Most status lines spawn five or six, every time, in every window you have open.
 - **Degrades cleanly** — 24-bit, 256-color, 16-color, `NO_COLOR`, and an ASCII-only mode, picked automatically.
 - **Color-vision-deficient palette by default** — cyan → yellow → red, separated by brightness as well as hue.
 - Single file, no dependencies. Node.js, so macOS, Linux, and Windows behave the same.
@@ -183,6 +183,7 @@ Everything lives in the `CONFIG` block at the top of `dapperline.js`.
 |---|---|---|
 | `showZeros` | `'section'` | `'section'` drops a side with no changes and keeps the full triplet on a side with any, so a clean tree is just the branch. `'always'` is posh-git's strict form, both sides every time. `'never'` drops every zero |
 | `showStash` | `true` | `$n` stash count |
+| `idleCacheTtl` | `60` | Seconds a git result may be reused when nothing in the session changed. `0` reads git on every render — see [Idle sessions](#idle-sessions) |
 | `shortenModel` | `true` | Drop a trailing parenthetical: `Opus 5 (1M context)` → `Opus 5` |
 | `showEffort` | `true` | `⚡xhigh` reasoning effort |
 | `showThinking` | `true` | `💡` when extended thinking is on |
@@ -247,9 +248,23 @@ Open a new session and only the context bar appears; the 5h and 7d rows arrive a
 
 `rate_limits` is absent from the payload until the first API response of the session, so there is genuinely nothing to draw at first. And the status line only re-runs on specific events — a new assistant message, `/compact`, a permission-mode change, a vim-mode toggle. Nothing schedules a re-run just because data arrived, so the stale render can sit there until you happen to trigger one.
 
-`refreshInterval: 10` fixes both: the quota rows fill in within ten seconds, and the `(reset ...)` countdowns stay honest instead of freezing at whatever they read when the session last re-rendered. One render costs about 200ms of a single git process and a Node start, so a ten-second timer is not a load worth worrying about.
+`refreshInterval: 10` fixes both: the quota rows fill in within ten seconds, and the `(reset ...)` countdowns stay honest instead of freezing at whatever they read when the session last re-rendered.
+
+The catch with any timer is that it fires in *every* open session, not just the one you are looking at, so its cost is multiplied by however many windows you keep around. dapperline handles that by not re-reading git when nothing in the session changed — see [Idle sessions](#idle-sessions) below. A session sitting untouched costs a Node start and no git process at all, which measured at 96ms against 237ms before.
 
 While the quota rows are absent the context bar drops its icon and label and collapses to one line — with a single row there is nothing to align it against.
+
+## Idle sessions
+
+Claude Code re-runs the status line on every `refreshInterval` tick in every open session, whether or not anything happened in it. Ten windows left open is ten renders every ten seconds, all night, redrawing output that has not changed.
+
+So dapperline compares the incoming payload against the previous render's and reuses that render's git result when the two match. A session sitting untouched spawns no git process at all.
+
+What the comparison leaves out matters as much as what it keeps. Claude Code sends `cost.total_duration_ms` — session wall-clock — and it advances on *every* render, idle or not, so comparing payloads as they arrive would never match twice and the cache would be dead code. Duration and cost are only compared when `showDuration` or `showCost` actually puts them on screen.
+
+Anything the clock supplies is recomputed every render regardless, so the `(reset ...)` countdowns keep ticking while the cache is in use.
+
+`idleCacheTtl` caps how old a reused result may be, in seconds. It is the backstop for changes nothing in the payload can signal — editing a file in another window, say — so a long-idle session still refreshes on its own. Set it to `0` to read git on every render. Results are cached in one small file per session under the system temp directory.
 
 ## Testing
 
@@ -262,14 +277,14 @@ To check what you are running:
 
 ```bash
 node ~/.dapperline/dapperline.js --version
-# dapperline 0.2.0 (4505f45)
+# dapperline 0.3.0 (5c95d1d)
 ```
 
 The commit is included because installs track `main`, so the tag alone cannot say how far past it a checkout has drifted.
 
 What changed in each version is on the [releases page](https://github.com/dev-2nan/dapperline/releases).
 
-Renders fixtures for each threshold band, missing fields, and unusual context sizes, then re-runs the script under five simulated terminals to check the color and glyph fallbacks.
+Renders fixtures for each threshold band, missing fields, and unusual context sizes, then re-runs the script under five simulated terminals to check the color and glyph fallbacks. It also renders the same payload twice and counts git processes through `GIT_TRACE`, which fails if the idle cache ever stops holding.
 
 ## Notes
 
