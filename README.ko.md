@@ -279,6 +279,8 @@ node ~/.dapperline/dapperline.js --version
 
 stash 개수는 `git stash list`를 띄우는 대신 `logs/refs/stash` 파일을 직접 읽어서 셉니다. 덕분에 렌더링당 git 프로세스가 하나로 유지됩니다.
 
+git은 `exec`가 아니라 `execFile`로 띄웁니다. `exec`는 명령을 셸에 넘기는데, Windows에서는 그게 곧 git 호출마다 `cmd.exe`를 하나씩 더 띄운다는 뜻입니다. 필요도 없는 그 셸이 렌더링당 134ms 대 84ms의 차이를 만듭니다.
+
 stdin은 `setEncoding('utf8')`로 읽습니다. 멀티바이트 문자가 청크 경계에 걸려도 깨지지 않으며, 한글 디렉토리 이름 같은 경우가 여기에 해당합니다.
 
 ## 참고한 프로젝트

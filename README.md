@@ -277,6 +277,8 @@ Renders fixtures for each threshold band, missing fields, and unusual context si
 
 Stash entries are counted by reading `logs/refs/stash` directly rather than shelling out to `git stash list`, which keeps the render to a single git process.
 
+git is spawned with `execFile`, not `exec`. `exec` routes the command through a shell, which on Windows means a `cmd.exe` wrapped around every call — 134ms per render against 84ms without it, for nothing this needs.
+
 stdin is read with `setEncoding('utf8')` so multi-byte characters split across chunk boundaries — non-ASCII directory names, for instance — survive intact.
 
 ## Credits
